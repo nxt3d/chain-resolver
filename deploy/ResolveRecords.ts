@@ -6,6 +6,7 @@ import { initSmith, shutdownSmith, loadDeployment, askQuestion } from './libs/ut
 import {
   Contract,
   Interface,
+  AbiCoder,
   dnsEncode,
   keccak256,
   toUtf8Bytes,
@@ -58,7 +59,7 @@ try {
     'function addr(bytes32,uint256) view returns (address)',
     'function contenthash(bytes32) view returns (bytes)',
     'function text(bytes32,string) view returns (string)',
-    'function data(bytes32,bytes) view returns (bytes)',
+    'function data(bytes32,string) view returns (bytes)',
   ]);
 
   // Input label
@@ -139,13 +140,33 @@ try {
     console.log(`text(${key}):`, val);
   }
 
-  // data(keyBytes)
-  const wantData = await askQuestion(rl, 'Resolve data(keyBytes)? (y/n): ');
+  // data(key)
+  const wantData = await askQuestion(rl, 'Resolve data(key)? (y/n): ');
   if (/^y(es)?$/i.test(wantData.trim())) {
-    const k = (await askQuestion(rl, 'data key (utf8 or 0x..): ')).trim();
-    const keyBytes = toBytesLike(k);
-    const bytesVal = await resolveDecode<string>('data(bytes32,bytes)', [labelHash, keyBytes]);
-    console.log('data:', bytesVal);
+    const kIn = (await askQuestion(rl, 'data key (string, e.g. chain-name:<7930-hex>): ')).trim();
+    const key = (() => {
+      const prefix = 'chain-name:';
+      if (kIn.startsWith(prefix)) {
+        const suffix = kIn.slice(prefix.length);
+        const hex = suffix.replace(/^0x/, '');
+        if (/^[0-9a-fA-F]+$/.test(hex) && hex.length % 2 === 0) {
+          return Buffer.concat([
+            Buffer.from(prefix, 'utf8'),
+            Buffer.from(hex, 'hex'),
+          ]).toString('latin1');
+        }
+      }
+      return kIn;
+    })();
+
+    const bytesVal = await resolveDecode<string>('data(bytes32,string)', [labelHash, key]);
+    let pretty: string;
+    try {
+      [pretty] = AbiCoder.defaultAbiCoder().decode(['string'], bytesVal);
+    } catch {
+      pretty = Buffer.from(bytesVal.replace(/^0x/, ''), 'hex').toString('utf8');
+    }
+    console.log('data:', pretty);
   }
 
   console.log('Done.');

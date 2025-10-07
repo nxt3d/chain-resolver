@@ -68,11 +68,12 @@ contract ChainResolverENSReverseTest is Test {
         // Test reverse resolution via data record with proper DNS encoding
         bytes memory name = abi.encodePacked(bytes1(uint8(bytes(CHAIN_NAME).length)), bytes(CHAIN_NAME), bytes1(0x00));
 
-        // Test data record with chain-name: prefix (this should use the special handling in resolve function)
-        bytes memory chainNameKey = abi.encodePacked("chain-name:", CHAIN_ID);
+        // Test data record with chain-name: prefix (string key)
+        string memory chainNameKey = string(abi.encodePacked("chain-name:", CHAIN_ID));
         bytes memory dataData = abi.encodeWithSelector(resolver.DATA_SELECTOR(), LABEL_HASH, chainNameKey);
         bytes memory result = resolver.resolve(name, dataData);
-        string memory resolvedChainName = abi.decode(result, (string));
+        bytes memory encodedName = abi.decode(result, (bytes));
+        string memory resolvedChainName = string(encodedName);
 
         assertEq(
             resolvedChainName, CHAIN_NAME, "Should resolve chain name from chain ID via data record resolve function"

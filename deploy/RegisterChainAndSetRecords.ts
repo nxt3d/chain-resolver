@@ -145,7 +145,7 @@ try {
       "function setAddr(bytes32,uint256,address) external",
       "function setContenthash(bytes32,bytes) external",
       "function setText(bytes32,string,string) external",
-      "function setData(bytes32,bytes,bytes) external",
+      "function setData(bytes32,string,bytes) external",
     ],
     deployerWallet
   );
@@ -234,12 +234,11 @@ try {
     console.log(`✓ setText(${key})`);
   }
 
-  if (await promptContinueOrExit(rl, "Set data(keyBytes,valueBytes)? (y/n): ")) {
-    const k = (await askQuestion(rl, "data key (utf8 or 0x..): ")).trim();
+  if (await promptContinueOrExit(rl, "Set data(key,value)? (y/n): ")) {
+    const k = (await askQuestion(rl, "data key (string): ")).trim();
     const v = (await askQuestion(rl, "data value (utf8 or 0x..): ")).trim();
-    const keyBytes = toBytesLike(k);
     const valBytes = toBytesLike(v);
-    const tx = await resolver.setData(labelHash, keyBytes, valBytes);
+    const tx = await resolver.setData(labelHash, k, valBytes);
     await tx.wait();
     console.log("✓ setData");
   }

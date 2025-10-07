@@ -30,7 +30,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     bytes4 public constant ADDR_COINTYPE_SELECTOR = bytes4(keccak256("addr(bytes32,uint256)"));
     bytes4 public constant CONTENTHASH_SELECTOR = bytes4(keccak256("contenthash(bytes32)"));
     bytes4 public constant TEXT_SELECTOR = bytes4(keccak256("text(bytes32,string)"));
-    bytes4 public constant DATA_SELECTOR = bytes4(keccak256("data(bytes32,bytes)"));
+    bytes4 public constant DATA_SELECTOR = bytes4(keccak256("data(bytes32,string)"));
 
     // Coin type constants
     uint256 public constant ETHEREUM_COIN_TYPE = 60;
@@ -97,11 +97,11 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
 
             // Check if key starts with "chain-name:" prefix (reverse resolution)
             bytes memory keyBytes = bytes(key);
-            bytes memory prefixBytes = bytes(CHAIN_NAME_PREFIX);
-            if (_startsWith(keyBytes, prefixBytes)) {
-                // Extract chainId from key (remove "chain-name:" prefix)
-                string memory chainIdHex = _substring(key, prefixBytes.length, keyBytes.length);
-                bytes memory chainIdBytes = bytes(chainIdHex);
+            bytes memory keyPrefixBytes = bytes(CHAIN_NAME_PREFIX);
+            if (_startsWith(keyBytes, keyPrefixBytes)) {
+                // Extract chainId suffix from key (string carries raw bytes); look up and return string
+                string memory chainIdPart = _substring(key, keyPrefixBytes.length, keyBytes.length);
+                bytes memory chainIdBytes = bytes(chainIdPart);
                 string memory resolvedChainName = chainNames[chainIdBytes];
                 return abi.encode(resolvedChainName);
             }
@@ -110,19 +110,19 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
             string memory value = textRecords[labelHash][key];
             return abi.encode(value);
         } else if (selector == DATA_SELECTOR) {
-            // data(bytes32,bytes) - decode key and return data value
-            (, bytes memory key) = abi.decode(data[4:], (bytes32, bytes));
+            // data(bytes32,string) - decode key and return data value
+            (, string memory keyStr) = abi.decode(data[4:], (bytes32, string));
 
             // Check if key starts with "chain-name:" prefix (reverse resolution)
-            bytes memory prefixBytes = bytes(CHAIN_NAME_PREFIX);
-            if (_startsWith(key, prefixBytes)) {
-                // Extract chainId from key (remove "chain-name:" prefix)
-                bytes memory chainIdBytes = new bytes(key.length - prefixBytes.length);
-                for (uint256 i = 0; i < chainIdBytes.length; i++) {
-                    chainIdBytes[i] = key[prefixBytes.length + i];
-                }
+            bytes memory key = bytes(keyStr);
+            bytes memory keyPrefixBytes = bytes(CHAIN_NAME_PREFIX);
+            if (_startsWith(key, keyPrefixBytes)) {
+                // Extract chainId (hex string) from key after the prefix
+                string memory chainIdHex = _substring(keyStr, keyPrefixBytes.length, key.length);
+                bytes memory chainIdBytes = bytes(chainIdHex);
                 string memory resolvedChainName = chainNames[chainIdBytes];
-                return abi.encode(resolvedChainName);
+                bytes memory chainNameBytes = bytes(resolvedChainName);
+                return abi.encode(chainNameBytes);
             }
 
             // Default: return data value from mapping
@@ -161,8 +161,6 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     function register(string calldata _chainName, address _owner, bytes calldata _chainId) external onlyOwner {
         _register(_chainName, _owner, _chainId);
     }
-
-    
 
     /**
      * @notice Batch register multiple chains (owner only)
@@ -249,11 +247,11 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
      * @param _key The data record key.
      * @param _data The data record value.
      */
-    function setData(bytes32 _labelHash, bytes calldata _key, bytes calldata _data)
+    function setData(bytes32 _labelHash, string calldata _key, bytes calldata _data)
         external
         onlyAuthorized(_labelHash)
     {
-        dataRecords[_labelHash][_key] = _data;
+        dataRecords[_labelHash][bytes(_key)] = _data;
     }
 
     /**
@@ -291,8 +289,8 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
      * @param _key The data record key.
      * @return The data record value.
      */
-    function getData(bytes32 _labelHash, bytes calldata _key) external view returns (bytes memory) {
-        return dataRecords[_labelHash][_key];
+    function getData(bytes32 _labelHash, string calldata _key) external view returns (bytes memory) {
+        return dataRecords[_labelHash][bytes(_key)];
     }
 
     /**

@@ -3,7 +3,7 @@
 
 import 'dotenv/config'
 import { Foundry } from '@adraffy/blocksmith'
-import { JsonRpcProvider, Wallet, Contract, Interface, dnsEncode, keccak256, toUtf8Bytes, getBytes, hexlify } from 'ethers'
+import { JsonRpcProvider, Wallet, Contract, Interface, dnsEncode, keccak256, toUtf8Bytes, getBytes, hexlify, AbiCoder } from 'ethers'
 import { init } from '../deploy/libs/init.ts'
 import { CHAIN_MAP } from '../deploy/libs/constants.ts'
 
@@ -67,12 +67,10 @@ async function main() {
 
     // 3) Set an ETH address record
     section('Set Records');
-    log('setAddr', { labelHash: LABEL_HASH, coinType: 60, addr: owner });
     const txAddr = await resolver.setAddr(LABEL_HASH, 60, owner);
     await txAddr.wait();
-    log('addr set tx', txAddr.hash);
 
-    // 4) Forward: resolve text(..., 'chain-id') as hex string
+    // Prepare names and interfaces for reverse-only debugging
     const ensName = `${label}.cid.eth`;
     const dnsName = dnsEncode(ensName, 255);
     const IFACE = new Interface(['function text(bytes32,string) view returns (string)']);
@@ -86,17 +84,47 @@ async function main() {
       throw new Error(`Unexpected chain-id hex: ${chainIdHex}`);
     }
 
-    // 5) Reverse: resolve data(..., bytes('chain-name:') || 7930)
-    const RIFACE = new Interface(['function data(bytes32,bytes) view returns (bytes)']);
-    const key = hexlify(new Uint8Array([...getBytes('0x' + Buffer.from('chain-name:', 'utf8').toString('hex')), ...CHAIN_ID]));
-    const rcall = RIFACE.encodeFunctionData('data(bytes32,bytes)', ['0x' + '0'.repeat(64), key]);
-    section('Reverse Resolve');
-    log('chainId used (hex)', CHAIN_ID_HEX);
+    // 5a) Reverse via text selector: text(..., 'chain-name:<7930-hex>')
+    const TIFACE = new Interface(['function text(bytes32,string) view returns (string)']);
+    const RIFACE = new Interface(['function data(bytes32,string) view returns (bytes)']);
+    // Build key as 'chain-name:' + raw 7930 bytes (encoded as a JS latin1 string)
+    const keyStr = Buffer.concat([
+      Buffer.from('chain-name:', 'utf8'),
+      Buffer.from(CHAIN_ID)
+    ]).toString('latin1');
+
+    section('Reverse Resolve (text)');
+    const tcall = TIFACE.encodeFunctionData('text(bytes32,string)', [LABEL_HASH, keyStr]);
+    const tanswer: string = await resolver.resolve(dnsName, tcall);
+    let textName = '';
+    try {
+      [textName] = TIFACE.decodeFunctionResult('text(bytes32,string)', tanswer);
+    } catch (e) {
+      // ignore; keep empty on decode error
+    }
+    log('text resolved name', textName);
+
+    // 5b) Reverse via data selector: data(..., 'chain-name:<7930-hex>')
+    section('Reverse Resolve (data)');
+    const rcall = RIFACE.encodeFunctionData('data(bytes32,string)', ['0x' + '0'.repeat(64), keyStr]);
     const ranswer: string = await resolver.resolve(dnsName, rcall);
-    const [encoded] = RIFACE.decodeFunctionResult('data(bytes32,bytes)', ranswer);
-    const name = Buffer.from((encoded as string).replace(/^0x/, ''), 'hex').toString('utf8');
-    log('resolved name', name);
-    if (name !== label) throw new Error(`Unexpected reverse name: ${name}`);
+    const [encoded] = RIFACE.decodeFunctionResult('data(bytes32,string)', ranswer);
+    let dataName: string;
+    try {
+      [dataName] = AbiCoder.defaultAbiCoder().decode(['string'], encoded);
+    } catch {
+      dataName = Buffer.from((encoded as string).replace(/^0x/, ''), 'hex').toString('utf8');
+    }
+    log('data resolved name', dataName);
+
+    // 5c) Direct read for comparison
+    section('Reverse Resolve (direct)');
+    const direct = await resolver.chainName(CHAIN_ID);
+    log('chainName(bytes)', direct);
+
+    // Final assertion
+    const picked = textName || dataName || direct;
+    if (picked !== label) throw new Error(`Unexpected reverse name: ${picked}`);
 
     // 6) Direct reads
     section('Direct Reads');

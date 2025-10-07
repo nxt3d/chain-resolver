@@ -47,20 +47,22 @@ try {
   }
   const chainIdBytes = getBytes(cidIn);
 
-  // Build key for ChainResolver data() path: raw bytes("chain-name:") || chainIdBytes
+  // Build key for ChainResolver data() path: 'chain-name:' + raw 7930 bytes (as a latin1 JS string)
   const IFACE = new Interface([
-    "function data(bytes32,bytes) view returns (bytes)",
+    "function data(bytes32,string) view returns (bytes)",
   ]);
-  const prefixRaw = getBytes('0x' + Buffer.from('chain-name:', 'utf8').toString('hex'));
-  const key = hexlify(new Uint8Array([...prefixRaw, ...chainIdBytes]));
+  const key = Buffer.concat([
+    Buffer.from('chain-name:', 'utf8'),
+    Buffer.from(chainIdBytes)
+  ]).toString('latin1');
   const dnsName = dnsEncode("x.cid.eth", 255); // any label works; reverse uses key
   const ZERO_NODE = "0x" + "0".repeat(64);
   
 
   try {
-    const call = IFACE.encodeFunctionData("data(bytes32,bytes)", [ZERO_NODE, key]);
+    const call = IFACE.encodeFunctionData("data(bytes32,string)", [ZERO_NODE, key]);
     const answer: string = await resolver.resolve(dnsName, call);
-    const [encoded] = IFACE.decodeFunctionResult("data(bytes32,bytes)", answer);
+    const [encoded] = IFACE.decodeFunctionResult("data(bytes32,string)", answer);
     let name: string;
     try {
       // Preferred: abi.encode(string)

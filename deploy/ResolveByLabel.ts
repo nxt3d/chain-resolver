@@ -55,7 +55,7 @@ try {
     "function addr(bytes32,uint256) view returns (address)",
     "function contenthash(bytes32) view returns (bytes)",
     "function text(bytes32,string) view returns (string)",
-    "function data(bytes32,bytes) view returns (bytes)",
+    "function data(bytes32,string) view returns (bytes)",
   ]);
 
   // Gather label and prepare DNS/namehash inputs

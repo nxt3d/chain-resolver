@@ -12,7 +12,7 @@ interface IChainResolver {
     event RecordSet(bytes32 indexed _labelHash, bytes _chainId, string _chainName);
     event LabelOwnerSet(bytes32 indexed _labelHash, address _owner);
     event OperatorSet(address indexed _owner, address indexed _operator, bool _isOperator);
-    
+
     /// @notice Errors
     error InvalidDataLength();
     error NotAuthorized(address _caller, bytes32 _labelHash);
