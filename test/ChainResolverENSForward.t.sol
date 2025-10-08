@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
 import "../src/ChainResolver.sol";
+import "../src/interfaces/IChainResolver.sol";
 
 contract ChainResolverENSForwardTest is Test {
     ChainResolver public resolver;
@@ -42,10 +43,11 @@ contract ChainResolverENSForwardTest is Test {
         vm.startPrank(user1);
 
         address testAddr = address(0x123);
-        resolver.setAddr(LABEL_HASH, 60, testAddr); // ETH coin type
+        resolver.setAddr(LABEL_HASH, testAddr); // ETH coin type
 
-        // Verify address record
-        assertEq(resolver.getAddr(LABEL_HASH, 60), testAddr, "Address record should be set");
+        // Verify address record (packed 20-byte value)
+        bytes memory ethVal = resolver.getAddr(LABEL_HASH, 60);
+        assertEq(ethVal, abi.encodePacked(testAddr), "Address record should be set");
 
         vm.stopPrank();
 
@@ -87,6 +89,9 @@ contract ChainResolverENSForwardTest is Test {
         vm.startPrank(user1);
 
         bytes memory testData = hex"deadbeef";
+        // Expect DataChanged event (node, indexedKey, key, data)
+        vm.expectEmit(true, true, true, true);
+        emit IChainResolver.DataChanged(LABEL_HASH, "custom", "custom", testData);
         resolver.setData(LABEL_HASH, "custom", testData);
 
         // Verify data record
@@ -131,7 +136,7 @@ contract ChainResolverENSForwardTest is Test {
         vm.startPrank(user1);
 
         address testAddr = address(0x456);
-        resolver.setAddr(LABEL_HASH, 60, testAddr);
+        resolver.setAddr(LABEL_HASH, testAddr);
         resolver.setText(LABEL_HASH, "description", "Test chain");
 
         vm.stopPrank();
@@ -203,6 +208,21 @@ contract ChainResolverENSForwardTest is Test {
         assertEq(resolvedData, customData, "Should resolve custom data record via resolve function");
 
         console.log("Successfully resolved custom data record via resolve function");
+    }
+
+    function test_009____setAddr_____________________RevertsOnInvalidEthBytes() public {
+        vm.startPrank(admin);
+        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        vm.stopPrank();
+
+        // Attempt to set ETH address using bytes with invalid length should revert
+        vm.startPrank(user1);
+        vm.expectRevert();
+        resolver.setAddr(LABEL_HASH, 60, hex"deadbeef");
+        vm.stopPrank();
+
+        // Ensure nothing was written
+        assertEq(resolver.getAddr(LABEL_HASH, 60), hex"", "ETH address storage should remain empty on invalid bytes");
     }
 
     function test_008____supportsInterface___________ReturnsCorrectInterfaceIds() public view {

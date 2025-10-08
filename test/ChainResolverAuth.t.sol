@@ -106,12 +106,12 @@ contract ChainResolverAuthTest is Test {
         vm.startPrank(attacker);
 
         vm.expectRevert();
-        resolver.setAddr(LABEL_HASH, 60, attacker);
+        resolver.setAddr(LABEL_HASH, attacker);
 
         vm.stopPrank();
 
         // Verify no address was set
-        assertEq(resolver.getAddr(LABEL_HASH, 60), address(0), "No address should be set");
+        assertEq(resolver.getAddr(LABEL_HASH, 60), hex"", "No address should be set");
 
         console.log("Successfully prevented unauthorized address setting");
     }

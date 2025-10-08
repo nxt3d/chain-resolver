@@ -3,7 +3,7 @@
 This repo contains a single contract — [`ChainResolver.sol`](src/ChainResolver.sol) — that lets clients look up ENS records and reverse names in one place. Read operations use the ENSIP‑10 extended resolver entrypoint `resolve(bytes name, bytes data)` (https://docs.ens.domains/ensip/10). Only the contract owner can make changes (ideally a multisig).
 
 ### Why this structure works
-- Everything is keyed by labelhash (computed as `labelHash = keccak256(bytes(label))`, for example with `label = "optimism"`). This keeps us agnostic to the final namespace (`cid.eth`, `on.eth`, `l2.eth`, etc.), so we can change hierarchies later without migrating fields.
+- Everything is keyed by labelhash (computed as `labelhash = keccak256(bytes(label))`, for example with `label = "optimism"`). This keeps us agnostic to the final namespace (`cid.eth`, `on.eth`, `l2.eth`, etc.), so we can change hierarchies later without migrating fields.
 - One source of truth: Ownership, 7930 chain IDs ([ERC‑7930](https://eips.ethereum.org/EIPS/eip-7930)), ENS records, and reverse lookups live in one place.
 - ENSIP‑10 Extended Resolver: Once registered, the chain owner (or an authorised operator) can set ENS fields like addresses, contenthash and other text/data fields. Reads go through the extended resolver entrypoint `resolve(bytes name, bytes data)` (see ENSIP‑10), so clients can call the standard ENS fields - `addr`, `contenthash`, `text`, and `data` - to pull chain metadata directly from an ENS name like `optimism.cid.eth`. For available fields and examples, see [Contract Interfaces](#contract-interfaces).
 - Clear forward and reverse: Forward returns a chain’s 7930 identifier; reverse maps 7930 bytes back to the chain name.
@@ -11,7 +11,7 @@ This repo contains a single contract — [`ChainResolver.sol`](src/ChainResolver
 ## ChainResolver.sol
 
 - The `chainId` bytes follow the 7930 chain identifier format; see [7930 Chain Identifier](#7930-chain-identifier-no-address).
-- Forward mapping: `labelHash → chainId (bytes)`
+- Forward mapping: `labelhash → chainId (bytes)`
 - Reverse mapping: `chainId (bytes) → chainName (string)`
 - Per‑label ENS records: `addr(coinType)`, `contenthash`, `text`, and `data`.
 - Ownership and operator permissions per label owner.
@@ -26,16 +26,16 @@ This repo contains a single contract — [`ChainResolver.sol`](src/ChainResolver
 Forward resolution (label → 7930):
 The ENS field `text(..., "chain-id")` (per [ENSIP‑5](https://docs.ens.domains/ensip/5)) returns the chain’s 7930 ID as a hex. This value is written at registration by the contract owner (e.g., a multisig) and the resolver ignores any user‑set text under that key. To resolve a chain ID:
  - DNS‑encode the ENS name (e.g., `optimism.cid.eth`).
- - Compute `labelHash = keccak256(bytes(label))` (e.g., `label = "optimism"`).
- - Call `resolve(name, abi.encodeWithSelector(text(labelHash, "chain-id")))` → returns a hex string.
+ - Compute `labelhash = keccak256(bytes(label))` (e.g., `label = "optimism"`).
+ - Call `resolve(name, abi.encodeWithSelector(text(labelhash, "chain-id")))` → returns a hex string.
 
 Reverse resolution (7930 → name):
 - Pass a key prefixed with `"chain-name:"` and suffixed with the 7930 hex via either `text(bytes32,string)` (per ENSIP‑5) or `data(bytes32,string)` (per [ENSIP‑TBD‑19](https://github.com/nxt3d/ensips/blob/ensip-ideas/ensips/ensip-TBD-19.md)); this uses the `chain-name:` service key parameter (per [ENSIP‑TBD‑17](https://github.com/nxt3d/ensips/blob/ensip-ideas/ensips/ensip-TBD-17.md)). For example:
 
   - serviceKey (string): `"chain-name:<7930-hex>"`
   - Calls:
-    - `resolve(name, encode(text(labelHash, serviceKey)))`
-    - `resolve(name, encode(data(labelHash, serviceKey)))`
+    - `resolve(name, encode(text(labelhash, serviceKey)))`
+    - `resolve(name, encode(data(labelhash, serviceKey)))`
 
 
 ## Contract Interfaces
@@ -43,15 +43,16 @@ Reverse resolution (7930 → name):
 Core reads and admin (see [src/interfaces/IChainResolver.sol](src/interfaces/IChainResolver.sol)):
 
 ```solidity
-function chainId(bytes32 labelHash) external view returns (bytes memory);
+function chainId(bytes32 labelhash) external view returns (bytes memory);
 function chainName(bytes calldata chainIdBytes) external view returns (string memory);
 function register(string calldata chainName, address owner, bytes calldata chainId) external; // owner-only
-function setLabelOwner(bytes32 labelHash, address owner) external; // label owner or operator
+function setLabelOwner(bytes32 labelhash, address owner) external; // label owner or operator
 function setOperator(address operator, bool isOperator) external;   // per-owner operator
 ```
 
 ENS fields available via `IExtendedResolver.resolve(name,data)`:
-- `addr(bytes32)` and `addr(bytes32,uint256)` → EVM address per coin type (60 = ETH) — multichain address resolution per [ENSIP‑9](https://docs.ens.domains/ensip/9)
+- `addr(bytes32)` → address (ETH, coin type 60) — per [ENSIP‑1](https://docs.ens.domains/ensip/1)
+- `addr(bytes32,uint256)` → bytes (raw multi‑coin value) — per [ENSIP‑9](https://docs.ens.domains/ensip/9)
 - `contenthash(bytes32)` → bytes — per [ENSIP‑7](https://docs.ens.domains/ensip/7)
 - `text(bytes32,string)` → string — per ENSIP‑5 (with special handling for `"chain-id"` and `"chain-name:"`)
 - `data(bytes32,string)` → bytes — per ENSIP‑TBD‑19 (with special handling for `"chain-name:"`)
@@ -99,11 +100,10 @@ bun install
 forge test -vv
 ```
 
-### Blocksmith test (live RPC)
+### Blocksmith test
 
 ```bash
-# Requires INFURA_API_KEY and <CHAIN>_PK in .env (see deploy/libs/constants.ts)
-bun run test/ChainResolver.blocksmith.ts -- --chain=sepolia
+bun run test/ChainResolver.blocksmith.ts
 ```
 
 ## Deploy & Resolve Workflow
@@ -153,11 +153,12 @@ bun run deploy/ReverseResolveByChainId.ts -- --chain=sepolia
 
 ## References
 - [ERC‑7930](https://eips.ethereum.org/EIPS/eip-7930) — Chain‑aware addresses (used here for chain identifiers)
-- [CAIP‑2](https://chainagnostic.org/CAIPs/caip-2) — Blockchain ID (namespace:reference) mapping (`eip155:<id>`)
+- [CAIP‑2](https://chainagnostic.org/CAIPs/caip-2) — Chain IDs (namespace:reference) mapping (`eip155:<id>`)
 - [ENSIP‑5](https://docs.ens.domains/ensip/5) — Text records
 - [ENSIP‑7](https://docs.ens.domains/ensip/7) — Contenthash records
 - [ENSIP‑9](https://docs.ens.domains/ensip/9) — Multi‑coin addresses
 - [ENSIP‑10](https://docs.ens.domains/ensip/10) — Extended resolver
+- [ENSIP‑11](https://docs.ens.domains/ensip/11) — Coin types (SLIP‑44 mapping)
 - [ENSIP‑TBD‑17](https://github.com/nxt3d/ensips/blob/ensip-ideas/ensips/ensip-TBD-17.md) — Service Key Parameters (e.g., `chain-name:`)
 - [ENSIP‑TBD‑18](https://github.com/nxt3d/ensips/blob/ensip-ideas/ensips/ensip-TBD-18.md) — Global `chain-id` text record
 - [ENSIP‑TBD‑19](https://github.com/nxt3d/ensips/blob/ensip-ideas/ensips/ensip-TBD-19.md) — `data()` records for chain IDs

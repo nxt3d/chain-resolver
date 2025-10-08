@@ -107,7 +107,8 @@ try {
   const resolver = new Contract(
     resolverAddress!,
     [
-      'function setAddr(bytes32,uint256,address) external',
+      'function setAddr(bytes32,address) external',
+      'function setAddr(bytes32,uint256,bytes) external',
       'function setContenthash(bytes32,bytes) external',
       'function setText(bytes32,string,string) external',
       'function setData(bytes32,string,bytes) external',
@@ -127,7 +128,7 @@ try {
   // Set addr(60)
   if (await promptContinueOrExit(rl, 'Set addr(60)? (y/n): ')) {
     const a60 = (await askQuestion(rl, 'ETH address: ')).trim();
-    const tx = await resolver.setAddr(labelHash, 60, a60);
+    const tx = await resolver.setAddr(labelHash, a60);
     await tx.wait();
     console.log('✓ setAddr(60)');
   }
@@ -136,8 +137,9 @@ try {
   if (await promptContinueOrExit(rl, 'Set addr(label, coinType)? (y/n): ')) {
     const coinTypeStr = (await askQuestion(rl, 'coinType (uint): ')).trim();
     const coinType = BigInt(coinTypeStr);
-    const addr = (await askQuestion(rl, 'address: ')).trim();
-    const tx = await resolver.setAddr(labelHash, coinType, addr);
+    const addr = (await askQuestion(rl, 'address (bytes: 0x.. or utf8): ')).trim();
+    const val = toBytesLike(addr);
+    const tx = await resolver.setAddr(labelHash, coinType, val);
     await tx.wait();
     console.log(`✓ setAddr(${coinType})`);
   }

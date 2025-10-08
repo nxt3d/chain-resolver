@@ -1,18 +1,14 @@
-// Blocksmith test for unified ChainResolver
-// Usage: bun run test:blocks -- --chain=sepolia
+// Blocksmith local simulation for unified ChainResolver
+// Usage: bun run test/ChainResolver.foundry.ts
 
 import 'dotenv/config'
 import { Foundry } from '@adraffy/blocksmith'
-import { JsonRpcProvider, Wallet, Contract, Interface, dnsEncode, keccak256, toUtf8Bytes, getBytes, hexlify, AbiCoder } from 'ethers'
-import { init } from '../deploy/libs/init.ts'
-import { CHAIN_MAP } from '../deploy/libs/constants.ts'
+import { Contract, Interface, dnsEncode, keccak256, toUtf8Bytes, getBytes, hexlify, AbiCoder } from 'ethers'
 
 async function main() {
-  const { chainId, privateKey } = await init();
-
-  const { rpc } = CHAIN_MAP.get(Number(chainId))!;
-  const provider = new JsonRpcProvider(rpc);
-  const wallet = new Wallet(privateKey, provider);
+  const smith = await Foundry.launch({ forge: 'forge', infoLog: true });
+  const provider = smith.provider;
+  const wallet = smith.requireWallet('admin');
 
   const log = (...a: any[]) => console.log('[blocksmith]', ...a);
   const section = (name: string) => console.log(`\n=== ${name} ===`);
@@ -20,9 +16,8 @@ async function main() {
     try { return hexlify(b); } catch { return String(b); }
   };
 
-  section('Launch');
-  log('chain', chainId, 'rpc', rpc);
-  const smith = await Foundry.launchLive({ provider, forge: 'forge', infoLog: true, wallets: [wallet] });
+  section('Launch (local Foundry)');
+  log('wallet', wallet.address);
   try {
     // 1) Deploy ChainResolver(owner)
     const owner = wallet.address;
@@ -39,11 +34,12 @@ async function main() {
     const resolver = new Contract(
       resolverAddr,
       [
-        'function register(string,address,bytes) external',
         'function chainId(bytes32) view returns (bytes)',
         'function chainName(bytes) view returns (string)',
-        'function setAddr(bytes32,uint256,address) external',
         'function resolve(bytes,bytes) view returns (bytes)',
+        'function setAddr(bytes32,address) external',
+        'function setAddr(bytes32,uint256,bytes) external',
+        'function register(string,address,bytes) external',
       ],
       wallet
     );
@@ -57,20 +53,12 @@ async function main() {
     log('label', label);
     log('labelHash', LABEL_HASH);
     log('chainId (hex)', CHAIN_ID_HEX);
-
     // 2) Register name -> chainId (owner-only)
-    section('Register');
-    log('tx register(label, owner, chainId)');
-    const tx = await resolver.register(label, owner, CHAIN_ID);
-    await tx.wait();
-    log('tx hash', tx.hash);
+  section('Register');
+  const tx = await resolver.register(label, owner, CHAIN_ID);
+  await tx.wait();
 
-    // 3) Set an ETH address record
-    section('Set Records');
-    const txAddr = await resolver.setAddr(LABEL_HASH, 60, owner);
-    await txAddr.wait();
-
-    // Prepare names and interfaces for reverse-only debugging
+    // Prepare names and interfaces
     const ensName = `${label}.cid.eth`;
     const dnsName = dnsEncode(ensName, 255);
     const IFACE = new Interface(['function text(bytes32,string) view returns (string)']);
@@ -84,10 +72,37 @@ async function main() {
       throw new Error(`Unexpected chain-id hex: ${chainIdHex}`);
     }
 
-    // 5a) Reverse via text selector: text(..., 'chain-name:<7930-hex>')
+    // Set and read an ETH address (coinType 60) via the 2-arg overload
+    {
+      const addr60 = '0x000000000000000000000000000000000000dEaD';
+      const IFACE60 = new Interface(['function addr(bytes32) view returns (address)']);
+      const setAddr60 = resolver.getFunction('setAddr(bytes32,address)');
+      await (await setAddr60(LABEL_HASH, addr60)).wait();
+      const call60 = IFACE60.encodeFunctionData('addr(bytes32)', [LABEL_HASH]);
+      const ans60: string = await resolver.resolve(dnsName, call60);
+      const [got60] = IFACE60.decodeFunctionResult('addr(bytes32)', ans60);
+      if (got60.toLowerCase() !== addr60.toLowerCase()) {
+        throw new Error(`Unexpected ETH addr: got=${got60} want=${addr60}`);
+      }
+    }
+
+    // Set and read a multi-coin (137) address locally via the 3-arg overload
+    {
+      const other = '0x0000000000000000000000000000000000000abc';
+      const AIFACE = new Interface(['function addr(bytes32,uint256) view returns (bytes)']);
+      const setAddrBytes = resolver.getFunction('setAddr(bytes32,uint256,bytes)');
+      await (await setAddrBytes(LABEL_HASH, 137n, getBytes(other))).wait();
+      const acall = AIFACE.encodeFunctionData('addr(bytes32,uint256)', [LABEL_HASH, 137n]);
+      const aanswer: string = await resolver.resolve(dnsName, acall);
+      const [rawBytes] = AIFACE.decodeFunctionResult('addr(bytes32,uint256)', aanswer);
+      if (hex(rawBytes) !== hex(getBytes(other))) {
+        throw new Error(`Unexpected multi-coin addr: got=${hex(rawBytes)} want=${hex(getBytes(other))}`);
+      }
+    }
+
+    // Reverse via text selector: data key 'chain-name:' + raw 7930
     const TIFACE = new Interface(['function text(bytes32,string) view returns (string)']);
     const RIFACE = new Interface(['function data(bytes32,string) view returns (bytes)']);
-    // Build key as 'chain-name:' + raw 7930 bytes (encoded as a JS latin1 string)
     const keyStr = Buffer.concat([
       Buffer.from('chain-name:', 'utf8'),
       Buffer.from(CHAIN_ID)
@@ -99,12 +114,9 @@ async function main() {
     let textName = '';
     try {
       [textName] = TIFACE.decodeFunctionResult('text(bytes32,string)', tanswer);
-    } catch (e) {
-      // ignore; keep empty on decode error
-    }
+    } catch (e) {}
     log('text resolved name', textName);
 
-    // 5b) Reverse via data selector: data(..., 'chain-name:<7930-hex>')
     section('Reverse Resolve (data)');
     const rcall = RIFACE.encodeFunctionData('data(bytes32,string)', ['0x' + '0'.repeat(64), keyStr]);
     const ranswer: string = await resolver.resolve(dnsName, rcall);
@@ -117,16 +129,13 @@ async function main() {
     }
     log('data resolved name', dataName);
 
-    // 5c) Direct read for comparison
     section('Reverse Resolve (direct)');
     const direct = await resolver.chainName(CHAIN_ID);
     log('chainName(bytes)', direct);
 
-    // Final assertion
     const picked = textName || dataName || direct;
     if (picked !== label) throw new Error(`Unexpected reverse name: ${picked}`);
 
-    // 6) Direct reads
     section('Direct Reads');
     const cid = await resolver.chainId(LABEL_HASH);
     log('chainId(bytes)', hex(cid));
@@ -135,10 +144,12 @@ async function main() {
     if (hexlify(cid) !== CHAIN_ID_HEX) throw new Error('chainId() mismatch');
     if (cname !== label) throw new Error('chainName() mismatch');
 
-    console.log('✓ Blocksmith test passed');
+    console.log('✓ Blocksmith Foundry test passed');
   } catch (e) {
     console.error(e);
     throw e;
+  } finally {
+    try { await smith.shutdown(); } catch {}
   }
 }
 

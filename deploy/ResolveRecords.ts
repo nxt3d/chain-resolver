@@ -1,4 +1,4 @@
-// Resolve records for a label via ENSIP-10 `resolve(name,data)`
+// Resolve records for a label via ENSIP-10
 import 'dotenv/config'
 
 import { init } from './libs/init.ts';
@@ -56,7 +56,7 @@ try {
 
   const IFACE = new Interface([
     'function addr(bytes32) view returns (address)',
-    'function addr(bytes32,uint256) view returns (address)',
+    'function addr(bytes32,uint256) view returns (bytes)',
     'function contenthash(bytes32) view returns (bytes)',
     'function text(bytes32,string) view returns (string)',
     'function data(bytes32,string) view returns (bytes)',
@@ -105,8 +105,8 @@ try {
       console.warn('Invalid coinType; skipping custom addr.');
     }
     if (coinType !== undefined) {
-      const addr = await resolveDecode<string>('addr(bytes32,uint256)', [labelHash, coinType]);
-      console.log(`addr(${coinType}):`, addr);
+      const bytesVal = await resolveDecode<string>('addr(bytes32,uint256)', [labelHash, coinType]);
+      console.log(`addr(${coinType}) bytes:`, bytesVal);
     }
   }
 

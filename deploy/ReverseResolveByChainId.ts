@@ -1,4 +1,4 @@
-// Reverse resolve a chainId to name via unified ChainResolver (ENSIP-10)
+// Reverse-resolve a chainId to a chain name
 
 import 'dotenv/config'
 import { init } from "./libs/init.ts";

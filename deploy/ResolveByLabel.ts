@@ -52,7 +52,7 @@ try {
   // ABI for encoding/decoding queries through ENSIP-10
   const IFACE = new Interface([
     "function addr(bytes32) view returns (address)",
-    "function addr(bytes32,uint256) view returns (address)",
+    "function addr(bytes32,uint256) view returns (bytes)",
     "function contenthash(bytes32) view returns (bytes)",
     "function text(bytes32,string) view returns (string)",
     "function data(bytes32,string) view returns (bytes)",

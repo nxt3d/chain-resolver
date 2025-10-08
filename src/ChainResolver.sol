@@ -18,10 +18,10 @@ import {IChainResolver} from "./interfaces/IChainResolver.sol";
 contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     /**
      * @notice Modifier to ensure only the label owner or authorized operator can call the function
-     * @param _labelHash The labelhash to check authorization for
+     * @param _labelhash The labelhash to check authorization for
      */
-    modifier onlyAuthorized(bytes32 _labelHash) {
-        _authenticateCaller(msg.sender, _labelHash);
+    modifier onlyAuthorized(bytes32 _labelhash) {
+        _authenticateCaller(msg.sender, _labelhash);
         _;
     }
 
@@ -40,16 +40,16 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     string public constant CHAIN_NAME_PREFIX = "chain-name:";
 
     // Chain data storage
-    mapping(bytes32 _labelHash => bytes _chainId) internal chainIds;
+    mapping(bytes32 _labelhash => bytes _chainId) internal chainIds;
     mapping(bytes _chainId => string _chainName) internal chainNames;
-    mapping(bytes32 _labelHash => address _owner) internal labelOwners;
+    mapping(bytes32 _labelhash => address _owner) internal labelOwners;
     mapping(address _owner => mapping(address _operator => bool _isOperator)) internal operators;
 
     // ENS record storage
-    mapping(bytes32 labelHash => mapping(uint256 coinType => address addr)) private addressRecords;
-    mapping(bytes32 labelHash => bytes contentHash) private contenthashRecords;
-    mapping(bytes32 labelHash => mapping(string key => string value)) private textRecords;
-    mapping(bytes32 labelHash => mapping(bytes key => bytes data)) private dataRecords;
+    mapping(bytes32 labelhash => mapping(uint256 coinType => bytes value)) private addressRecords;
+    mapping(bytes32 labelhash => bytes contentHash) private contenthashRecords;
+    mapping(bytes32 labelhash => mapping(string key => string value)) private textRecords;
+    mapping(bytes32 labelhash => mapping(bytes key => bytes data)) private dataRecords;
 
     /**
      * @notice Constructor
@@ -65,23 +65,24 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
      */
     function resolve(bytes calldata name, bytes calldata data) external view override returns (bytes memory) {
         // Extract the first label from the DNS-encoded name
-        (bytes32 labelHash,,,) = NameCoder.readLabel(name, 0, true);
+        (bytes32 labelhash,,,) = NameCoder.readLabel(name, 0, true);
 
         // Get the method selector (first 4 bytes)
         bytes4 selector = bytes4(data);
 
         if (selector == ADDR_SELECTOR) {
-            // addr(bytes32) - return address for Ethereum (coinType 60)
-            address addr = addressRecords[labelHash][ETHEREUM_COIN_TYPE];
-            return abi.encode(addr);
+            bytes memory v = addressRecords[labelhash][ETHEREUM_COIN_TYPE];
+            if (v.length == 0) {
+                return abi.encode(payable(0));
+            }
+            return abi.encode(bytesToAddress(v));
         } else if (selector == ADDR_COINTYPE_SELECTOR) {
-            // addr(bytes32,uint256) - decode coinType and return address
             (, uint256 coinType) = abi.decode(data[4:], (bytes32, uint256));
-            address addr = addressRecords[labelHash][coinType];
-            return abi.encode(addr);
+            bytes memory a = addressRecords[labelhash][coinType];
+            return abi.encode(a);
         } else if (selector == CONTENTHASH_SELECTOR) {
             // contenthash(bytes32) - return content hash
-            bytes memory contentHash = contenthashRecords[labelHash];
+            bytes memory contentHash = contenthashRecords[labelhash];
             return abi.encode(contentHash);
         } else if (selector == TEXT_SELECTOR) {
             // text(bytes32,string) - decode key and return text value
@@ -90,7 +91,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
             // Special case for "chain-id" text record
             if (keccak256(abi.encodePacked(key)) == keccak256(abi.encodePacked(CHAIN_ID_KEY))) {
                 // Get chain ID bytes from internal registry and encode as hex string
-                bytes memory chainIdBytes = chainIds[labelHash];
+                bytes memory chainIdBytes = chainIds[labelhash];
                 string memory hexString = HexUtils.bytesToHex(chainIdBytes);
                 return abi.encode(hexString);
             }
@@ -107,7 +108,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
             }
 
             // Default: return text value from mapping
-            string memory value = textRecords[labelHash][key];
+            string memory value = textRecords[labelhash][key];
             return abi.encode(value);
         } else if (selector == DATA_SELECTOR) {
             // data(bytes32,string) - decode key and return data value
@@ -120,13 +121,13 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
                 // Extract chainId (hex string) from key after the prefix
                 string memory chainIdHex = _substring(keyStr, keyPrefixBytes.length, key.length);
                 bytes memory chainIdBytes = bytes(chainIdHex);
-                string memory resolvedChainName = chainNames[chainIdBytes];
-                bytes memory chainNameBytes = bytes(resolvedChainName);
-                return abi.encode(chainNameBytes);
+                string memory v = chainNames[chainIdBytes];
+                bytes memory resolvedChainName = bytes(v);
+                return abi.encode(resolvedChainName);
             }
 
             // Default: return data value from mapping
-            bytes memory dataValue = dataRecords[labelHash][key];
+            bytes memory dataValue = dataRecords[labelhash][key];
             return abi.encode(dataValue);
         }
 
@@ -151,8 +152,8 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     /**
      * @inheritdoc IChainResolver
      */
-    function chainId(bytes32 _labelHash) external view returns (bytes memory _chainId) {
-        _chainId = chainIds[_labelHash];
+    function chainId(bytes32 _labelhash) external view returns (bytes memory _chainId) {
+        _chainId = chainIds[_labelhash];
     }
 
     /**
@@ -185,9 +186,9 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     /**
      * @inheritdoc IChainResolver
      */
-    function setLabelOwner(bytes32 _labelHash, address _owner) external onlyAuthorized(_labelHash) {
-        labelOwners[_labelHash] = _owner;
-        emit LabelOwnerSet(_labelHash, _owner);
+    function setLabelOwner(bytes32 _labelhash, address _owner) external onlyAuthorized(_labelhash) {
+        labelOwners[_labelhash] = _owner;
+        emit LabelOwnerSet(_labelhash, _owner);
     }
 
     /**
@@ -201,105 +202,123 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     /**
      * @inheritdoc IChainResolver
      */
-    function isAuthorized(bytes32 _labelHash, address _address) external view returns (bool _authorized) {
-        address _owner = labelOwners[_labelHash];
+    function isAuthorized(bytes32 _labelhash, address _address) external view returns (bool _authorized) {
+        address _owner = labelOwners[_labelhash];
         return _owner == _address || operators[_owner][_address];
     }
 
     // ============ ENS Resolver Functions ============
 
     /**
-     * @notice Set the address for a labelhash with a specific coin type.
-     * @param _labelHash The labelhash to update.
-     * @param _coinType The coin type (default: 60 for Ethereum).
-     * @param _addr The address to set.
+     * @notice Set the ETH address (coin type 60) for a labelhash.
+     * @param _labelhash The labelhash to update.
+     * @param _addr The EVM address to set.
      */
-    function setAddr(bytes32 _labelHash, uint256 _coinType, address _addr) external onlyAuthorized(_labelHash) {
-        addressRecords[_labelHash][_coinType] = _addr;
+    function setAddr(bytes32 _labelhash, address _addr) external onlyAuthorized(_labelhash) {
+        addressRecords[_labelhash][ETHEREUM_COIN_TYPE] = abi.encodePacked(_addr);
+        emit AddrChanged(_labelhash, _addr);
+    }
+
+    /**
+     * @notice Set a multi-coin address for a given coin type.
+     * @param _labelhash The labelhash to update.
+     * @param _coinType The coin type (per ENSIP-11).
+     * @param _value The raw address bytes encoded for that coin type.
+     */
+    function setAddr(bytes32 _labelhash, uint256 _coinType, bytes calldata _value)
+        external
+        onlyAuthorized(_labelhash)
+    {
+        addressRecords[_labelhash][_coinType] = _value;
+        emit AddressChanged(_labelhash, _coinType, _value);
+        if (_coinType == ETHEREUM_COIN_TYPE) {
+            emit AddrChanged(_labelhash, bytesToAddress(_value));
+        }
     }
 
     /**
      * @notice Set the content hash for a labelhash.
-     * @param _labelHash The labelhash to update.
+     * @param _labelhash The labelhash to update.
      * @param _hash The content hash to set.
      */
-    function setContenthash(bytes32 _labelHash, bytes calldata _hash) external onlyAuthorized(_labelHash) {
-        contenthashRecords[_labelHash] = _hash;
+    function setContenthash(bytes32 _labelhash, bytes calldata _hash) external onlyAuthorized(_labelhash) {
+        contenthashRecords[_labelhash] = _hash;
     }
 
     /**
      * @notice Set a text record for a labelhash.
-     * @param _labelHash The labelhash to update.
+     * @param _labelhash The labelhash to update.
      * @param _key The text record key.
      * @param _value The text record value.
      * @dev Note: "chain-id" text record will be stored but not used - resolve() overrides it with internal registry value.
      */
-    function setText(bytes32 _labelHash, string calldata _key, string calldata _value)
+    function setText(bytes32 _labelhash, string calldata _key, string calldata _value)
         external
-        onlyAuthorized(_labelHash)
+        onlyAuthorized(_labelhash)
     {
-        textRecords[_labelHash][_key] = _value;
+        textRecords[_labelhash][_key] = _value;
     }
 
     /**
      * @notice Set a data record for a labelhash.
-     * @param _labelHash The labelhash to update.
+     * @param _labelhash The labelhash to update.
      * @param _key The data record key.
      * @param _data The data record value.
      */
-    function setData(bytes32 _labelHash, string calldata _key, bytes calldata _data)
+    function setData(bytes32 _labelhash, string calldata _key, bytes calldata _data)
         external
-        onlyAuthorized(_labelHash)
+        onlyAuthorized(_labelhash)
     {
-        dataRecords[_labelHash][bytes(_key)] = _data;
+        dataRecords[_labelhash][bytes(_key)] = _data;
+        emit DataChanged(_labelhash, _key, _key, _data);
     }
 
     /**
      * @notice Get the address for a labelhash with a specific coin type.
-     * @param _labelHash The labelhash to query.
+     * @param _labelhash The labelhash to query.
      * @param _coinType The coin type (default: 60 for Ethereum).
      * @return The address for this label and coin type.
      */
-    function getAddr(bytes32 _labelHash, uint256 _coinType) external view returns (address) {
-        return addressRecords[_labelHash][_coinType];
+    function getAddr(bytes32 _labelhash, uint256 _coinType) external view returns (bytes memory) {
+        return addressRecords[_labelhash][_coinType];
     }
 
     /**
      * @notice Get the content hash for a labelhash.
-     * @param _labelHash The labelhash to query.
+     * @param _labelhash The labelhash to query.
      * @return The content hash for this label.
      */
-    function getContenthash(bytes32 _labelHash) external view returns (bytes memory) {
-        return contenthashRecords[_labelHash];
+    function getContenthash(bytes32 _labelhash) external view returns (bytes memory) {
+        return contenthashRecords[_labelhash];
     }
 
     /**
      * @notice Get a text record for a labelhash.
-     * @param _labelHash The labelhash to query.
+     * @param _labelhash The labelhash to query.
      * @param _key The text record key.
      * @return The text record value.
      */
-    function getText(bytes32 _labelHash, string calldata _key) external view returns (string memory) {
-        return textRecords[_labelHash][_key];
+    function getText(bytes32 _labelhash, string calldata _key) external view returns (string memory) {
+        return textRecords[_labelhash][_key];
     }
 
     /**
      * @notice Get a data record for a labelhash.
-     * @param _labelHash The labelhash to query.
+     * @param _labelhash The labelhash to query.
      * @param _key The data record key.
      * @return The data record value.
      */
-    function getData(bytes32 _labelHash, string calldata _key) external view returns (bytes memory) {
-        return dataRecords[_labelHash][bytes(_key)];
+    function getData(bytes32 _labelhash, string calldata _key) external view returns (bytes memory) {
+        return dataRecords[_labelhash][bytes(_key)];
     }
 
     /**
      * @notice Get the owner of a labelhash.
-     * @param _labelHash The labelhash to query.
+     * @param _labelhash The labelhash to query.
      * @return The owner address.
      */
-    function getOwner(bytes32 _labelHash) external view returns (address) {
-        return labelOwners[_labelHash];
+    function getOwner(bytes32 _labelhash) external view returns (address) {
+        return labelOwners[_labelhash];
     }
 
     // ============ Utility Functions ============
@@ -311,14 +330,14 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
      * @param _chainId The chain ID
      */
     function _register(string calldata _chainName, address _owner, bytes calldata _chainId) internal {
-        bytes32 _labelHash = keccak256(bytes(_chainName));
+        bytes32 _labelhash = keccak256(bytes(_chainName));
 
-        labelOwners[_labelHash] = _owner;
-        chainIds[_labelHash] = _chainId;
+        labelOwners[_labelhash] = _owner;
+        chainIds[_labelhash] = _chainId;
         chainNames[_chainId] = _chainName;
 
-        emit LabelOwnerSet(_labelHash, _owner);
-        emit RecordSet(_labelHash, _chainId, _chainName);
+        emit LabelOwnerSet(_labelhash, _owner);
+        emit RecordSet(_labelhash, _chainId, _chainName);
     }
 
     /**
@@ -352,14 +371,27 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     }
 
     /**
+     * @notice Decodes a packed 20-byte value into an EVM address.
+     * @param b The 20-byte sequence.
+     * @return a The decoded payable address.
+     * @dev Reverts if `b.length != 20`.
+     */
+    function bytesToAddress(bytes memory b) internal pure returns (address payable a) {
+        require(b.length == 20);
+        assembly {
+            a := div(mload(add(b, 32)), exp(256, 12))
+        }
+    }
+
+    /**
      * @notice Authenticates the caller for a given labelhash.
      * @param _caller The address to check.
-     * @param _labelHash The labelhash to check.
+     * @param _labelhash The labelhash to check.
      */
-    function _authenticateCaller(address _caller, bytes32 _labelHash) internal view {
-        address _owner = labelOwners[_labelHash];
+    function _authenticateCaller(address _caller, bytes32 _labelhash) internal view {
+        address _owner = labelOwners[_labelhash];
         if (_owner != _caller && !operators[_owner][_caller]) {
-            revert NotAuthorized(_caller, _labelHash);
+            revert NotAuthorized(_caller, _labelhash);
         }
     }
 }

@@ -1,4 +1,4 @@
-// Register a chain and set records in the unified ChainResolver
+// Register a chain and optionally set records
 import 'dotenv/config'
 
 import { init } from "./libs/init.ts";
@@ -7,6 +7,7 @@ import {
   shutdownSmith,
   askQuestion,
   promptContinueOrExit,
+  loadDeployment,
 } from "./libs/utils.ts";
 import {
   Contract,
@@ -121,13 +122,21 @@ const { deployerWallet, smith, rl } = await initSmith(
 );
 
 try {
-  // Resolve ChainResolver address (env > prompt)
+  // Resolve ChainResolver address (deployments JSON > env > prompt)
   let resolverAddress: string | undefined;
   try {
-    const envRes = (process.env.CHAIN_RESOLVER_ADDRESS || process.env.RESOLVER_ADDRESS || "").trim();
-    if (envRes) {
-      const code = await deployerWallet.provider.getCode(envRes);
-      if (code && code !== "0x") resolverAddress = envRes;
+    const dep = await loadDeployment(chainId, "ChainResolver");
+    const found = dep.target as string;
+    const code = await deployerWallet.provider.getCode(found);
+    if (code && code !== "0x") resolverAddress = found;
+  } catch {}
+  try {
+    if (!resolverAddress) {
+      const envRes = (process.env.CHAIN_RESOLVER_ADDRESS || process.env.RESOLVER_ADDRESS || "").trim();
+      if (envRes) {
+        const code = await deployerWallet.provider.getCode(envRes);
+        if (code && code !== "0x") resolverAddress = envRes;
+      }
     }
   } catch {}
   if (!resolverAddress) resolverAddress = (await askQuestion(rl, "ChainResolver address: ")).trim();
@@ -139,10 +148,13 @@ try {
   const resolver = new Contract(
     resolverAddress,
     [
+      "function owner() view returns (address)",
       "function register(string,address,bytes) external",
       "function chainId(bytes32) view returns (bytes)",
       "function chainName(bytes) view returns (string)",
-      "function setAddr(bytes32,uint256,address) external",
+      "function getOwner(bytes32) view returns (address)",
+      "function setAddr(bytes32,address) external",
+      "function setAddr(bytes32,uint256,bytes) external",
       "function setContenthash(bytes32,bytes) external",
       "function setText(bytes32,string,string) external",
       "function setData(bytes32,string,bytes) external",
@@ -151,6 +163,9 @@ try {
   );
 
   // Inputs
+  console.log("Using ChainResolver:", resolverAddress);
+  try { console.log("Contract owner:", await resolver.owner()); } catch {}
+  console.log("Caller:", deployerWallet.address);
   const label = (await askQuestion(rl, "Chain label (e.g. optimism): ")).trim();
   const labelHash = keccak256(toUtf8Bytes(label));
   let cidIn = (await askQuestion(rl, "Chain ID (hex 0x.. or decimal): ")).trim();
@@ -190,6 +205,7 @@ try {
     const cid = await resolver.chainId(labelHash);
     const name = await resolver.chainName(cid);
     console.log("chainId:", cid, "chainName:", name);
+    try { console.log("label owner:", await resolver.getOwner(labelHash)); } catch {}
   } catch {}
 
   // Optional records
@@ -197,18 +213,76 @@ try {
   console.log("You can answer 'n' to skip any of them.\n");
   if (await promptContinueOrExit(rl, "Set addr(60)? (y/n): ")) {
     const a60 = (await askQuestion(rl, "ETH address: ")).trim();
-    const tx = await resolver.setAddr(labelHash, 60, a60);
-    await tx.wait();
-    console.log("✓ setAddr(60)");
+    try {
+      const setAddr60 = resolver.getFunction("setAddr(bytes32,address)");
+      const tx = await setAddr60(labelHash, a60);
+      await tx.wait();
+      console.log("✓ setAddr(60)");
+    } catch (e: any) {
+      // Fallback: some RPCs fail gas estimation or return opaque errors.
+      // Decode common custom error if present, then try manual send.
+      try {
+        const errIface = new Interface(["error NotAuthorized(address,bytes32)"]);
+        const data: string | undefined = e?.data || e?.error?.data || e?.info?.error?.data;
+        if (data && typeof data === 'string') {
+          const parsed = errIface.parseError(data);
+          if (parsed?.name === 'NotAuthorized') {
+            const [who, lh] = parsed.args as any[];
+            console.error(`✗ NotAuthorized: caller=${who} labelHash=${lh}`);
+          }
+        }
+      } catch {}
+      try {
+        const data = new Interface(["function setAddr(bytes32,address)"]).encodeFunctionData(
+          "setAddr(bytes32,address)",
+          [labelHash, a60]
+        );
+        const sent = await deployerWallet.sendTransaction({ to: resolverAddress, data, gasLimit: 200000n });
+        await sent.wait();
+        console.log("✓ setAddr(60) (fallback)");
+      } catch (e2: any) {
+        const msg = e2?.shortMessage || e2?.message || String(e2);
+        console.error("✗ setAddr(60) failed:", msg);
+      }
+    }
   }
 
   if (await promptContinueOrExit(rl, "Set another addr with custom coinType? (y/n): ")) {
     const ctStr = (await askQuestion(rl, "coinType (uint): ")).trim();
     const ct = BigInt(ctStr);
-    const addr = (await askQuestion(rl, "address: ")).trim();
-    const tx = await resolver.setAddr(labelHash, ct, addr);
-    await tx.wait();
-    console.log(`✓ setAddr(${ct})`);
+    const addr = (await askQuestion(rl, "address (bytes: 0x.. or utf8): ")).trim();
+    const val = toBytesLike(addr);
+    try {
+      const setAddrBytes = resolver.getFunction("setAddr(bytes32,uint256,bytes)");
+      const tx = await setAddrBytes(labelHash, ct, val);
+      await tx.wait();
+      console.log(`✓ setAddr(${ct})`);
+    } catch (e: any) {
+      // Fallback with manual gas and error decode
+      try {
+        const errIface = new Interface(["error NotAuthorized(address,bytes32)"]);
+        const data: string | undefined = e?.data || e?.error?.data || e?.info?.error?.data;
+        if (data && typeof data === 'string') {
+          const parsed = errIface.parseError(data);
+          if (parsed?.name === 'NotAuthorized') {
+            const [who, lh] = parsed.args as any[];
+            console.error(`✗ NotAuthorized: caller=${who} labelHash=${lh}`);
+          }
+        }
+      } catch {}
+      try {
+        const data = new Interface(["function setAddr(bytes32,uint256,bytes)"]).encodeFunctionData(
+          "setAddr(bytes32,uint256,bytes)",
+          [labelHash, ct, val]
+        );
+        const sent = await deployerWallet.sendTransaction({ to: resolverAddress, data, gasLimit: 250000n });
+        await sent.wait();
+        console.log(`✓ setAddr(${ct}) (fallback)`);
+      } catch (e2: any) {
+        const msg = e2?.shortMessage || e2?.message || String(e2);
+        console.error(`✗ setAddr(${ct}) failed:`, msg);
+      }
+    }
   }
 
   if (await promptContinueOrExit(rl, "Set contenthash? (y/n): ")) {

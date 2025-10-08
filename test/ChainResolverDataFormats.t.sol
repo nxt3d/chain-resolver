@@ -165,21 +165,40 @@ contract ChainResolverDataFormatsTest is Test {
         coinTypes[3] = 42161; // Arbitrum
         coinTypes[4] = 999999; // Custom coin type
 
-        // Set all addresses
-        for (uint256 i = 0; i < testAddresses.length; i++) {
-            resolver.setAddr(LABEL_HASH, coinTypes[i], testAddresses[i]);
-        }
+        // Set all addresses: ETH via convenience, others via bytes
+        resolver.setAddr(LABEL_HASH, testAddresses[1]); // coinType 60
+        resolver.setAddr(LABEL_HASH, coinTypes[0], abi.encodePacked(testAddresses[0]));
+        resolver.setAddr(LABEL_HASH, coinTypes[2], abi.encodePacked(testAddresses[2]));
+        resolver.setAddr(LABEL_HASH, coinTypes[3], abi.encodePacked(testAddresses[3]));
+        resolver.setAddr(LABEL_HASH, coinTypes[4], abi.encodePacked(testAddresses[4]));
 
         vm.stopPrank();
 
         // Verify all addresses were set correctly
-        for (uint256 i = 0; i < testAddresses.length; i++) {
-            assertEq(
-                resolver.getAddr(LABEL_HASH, coinTypes[i]),
-                testAddresses[i],
-                string(abi.encodePacked("Address ", vm.toString(i), " should be preserved"))
-            );
-        }
+        // Verify packed 20-byte values for EVM-like addresses
+        assertEq(
+            resolver.getAddr(LABEL_HASH, 60), abi.encodePacked(testAddresses[1]), "ETH address should be preserved"
+        );
+        assertEq(
+            resolver.getAddr(LABEL_HASH, coinTypes[0]),
+            abi.encodePacked(testAddresses[0]),
+            "Zero address should be preserved"
+        );
+        assertEq(
+            resolver.getAddr(LABEL_HASH, coinTypes[2]),
+            abi.encodePacked(testAddresses[2]),
+            "Polygon address should be preserved"
+        );
+        assertEq(
+            resolver.getAddr(LABEL_HASH, coinTypes[3]),
+            abi.encodePacked(testAddresses[3]),
+            "Arbitrum address should be preserved"
+        );
+        assertEq(
+            resolver.getAddr(LABEL_HASH, coinTypes[4]),
+            abi.encodePacked(testAddresses[4]),
+            "Custom address should be preserved"
+        );
 
         console.log("Successfully handled various address types");
     }
