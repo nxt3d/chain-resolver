@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
 import "../src/ChainResolver.sol";
+import {HexUtils} from "@ensdomains/ens-contracts/contracts/utils/HexUtils.sol";
 
 contract ChainResolverENSReverseTest is Test {
     ChainResolver public resolver;
@@ -43,7 +44,8 @@ contract ChainResolverENSReverseTest is Test {
 
         // Test text record with chain-name: prefix (set it manually first)
         vm.startPrank(user1);
-        string memory chainNameKey = string(abi.encodePacked("chain-name:", CHAIN_ID));
+        string memory chainIdHex = HexUtils.bytesToHex(CHAIN_ID);
+        string memory chainNameKey = string(abi.encodePacked("chain-name:", chainIdHex));
         resolver.setText(LABEL_HASH, chainNameKey, CHAIN_NAME);
         vm.stopPrank();
 
@@ -69,7 +71,8 @@ contract ChainResolverENSReverseTest is Test {
         bytes memory name = abi.encodePacked(bytes1(uint8(bytes(CHAIN_NAME).length)), bytes(CHAIN_NAME), bytes1(0x00));
 
         // Test data record with chain-name: prefix (string key)
-        string memory chainNameKey = string(abi.encodePacked("chain-name:", CHAIN_ID));
+        string memory chainIdHex = HexUtils.bytesToHex(CHAIN_ID);
+        string memory chainNameKey = string(abi.encodePacked("chain-name:", chainIdHex));
         bytes memory dataData = abi.encodeWithSelector(resolver.DATA_SELECTOR(), LABEL_HASH, chainNameKey);
         bytes memory result = resolver.resolve(name, dataData);
         bytes memory encodedName = abi.decode(result, (bytes));

@@ -49,7 +49,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     mapping(bytes32 labelhash => mapping(uint256 coinType => bytes value)) private addressRecords;
     mapping(bytes32 labelhash => bytes contentHash) private contenthashRecords;
     mapping(bytes32 labelhash => mapping(string key => string value)) private textRecords;
-    mapping(bytes32 labelhash => mapping(bytes key => bytes data)) private dataRecords;
+    mapping(bytes32 labelhash => mapping(string key => bytes data)) private dataRecords;
 
     /**
      * @notice Constructor
@@ -87,53 +87,12 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
         } else if (selector == TEXT_SELECTOR) {
             // text(bytes32,string) - decode key and return text value
             (, string memory key) = abi.decode(data[4:], (bytes32, string));
-
-            // Special case for "chain-id" text record
-            if (keccak256(abi.encodePacked(key)) == keccak256(abi.encodePacked(CHAIN_ID_KEY))) {
-                // Get chain ID bytes from internal registry and encode as hex string
-                bytes memory chainIdBytes = chainIds[labelhash];
-                string memory hexString = HexUtils.bytesToHex(chainIdBytes);
-                return abi.encode(hexString);
-            }
-
-            // Check if key starts with "chain-name:" prefix (reverse resolution)
-            bytes memory keyBytes = bytes(key);
-            bytes memory keyPrefixBytes = bytes(CHAIN_NAME_PREFIX);
-            if (_startsWith(keyBytes, keyPrefixBytes)) {
-                // Extract chainId suffix from key
-                string memory chainIdPart = _substring(key, keyPrefixBytes.length, keyBytes.length);
-                bytes memory chainIdBytes = bytes(chainIdPart);
-                string memory resolvedChainName = chainNames[chainIdBytes];
-                return abi.encode(resolvedChainName);
-            }
-
-            // Default: return text value from mapping
-            string memory value = textRecords[labelhash][key];
+            string memory value = _getTextWithOverrides(labelhash, key);
             return abi.encode(value);
         } else if (selector == DATA_SELECTOR) {
             // data(bytes32,string) - decode key and return data value
             (, string memory keyStr) = abi.decode(data[4:], (bytes32, string));
-
-            // Special case for "chain-id" data record: return raw 7930 bytes
-            if (keccak256(abi.encodePacked(keyStr)) == keccak256(abi.encodePacked(CHAIN_ID_KEY))) {
-                bytes memory chainIdBytes = chainIds[labelhash];
-                return abi.encode(chainIdBytes);
-            }
-
-            // Check if key starts with "chain-name:" prefix (reverse resolution)
-            bytes memory key = bytes(keyStr);
-            bytes memory keyPrefixBytes = bytes(CHAIN_NAME_PREFIX);
-            if (_startsWith(key, keyPrefixBytes)) {
-                // Extract chainId suffix from key
-                string memory chainIdHex = _substring(keyStr, keyPrefixBytes.length, key.length);
-                bytes memory chainIdBytes = bytes(chainIdHex);
-                string memory v = chainNames[chainIdBytes];
-                bytes memory resolvedChainName = bytes(v);
-                return abi.encode(resolvedChainName);
-            }
-
-            // Default: return data value from mapping
-            bytes memory dataValue = dataRecords[labelhash][key];
+            bytes memory dataValue = _getDataWithOverrides(labelhash, keyStr);
             return abi.encode(dataValue);
         }
 
@@ -275,7 +234,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
         external
         onlyAuthorized(_labelhash)
     {
-        dataRecords[_labelhash][bytes(_key)] = _data;
+        dataRecords[_labelhash][_key] = _data;
         emit DataChanged(_labelhash, _key, _key, _data);
     }
 
@@ -302,20 +261,20 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
      * @notice Get a text record for a labelhash.
      * @param _labelhash The labelhash to query.
      * @param _key The text record key.
-     * @return The text record value.
+     * @return The text record value (with special handling for chain-id and chain-name:).
      */
     function getText(bytes32 _labelhash, string calldata _key) external view returns (string memory) {
-        return textRecords[_labelhash][_key];
+        return _getTextWithOverrides(_labelhash, _key);
     }
 
     /**
      * @notice Get a data record for a labelhash.
      * @param _labelhash The labelhash to query.
      * @param _key The data record key.
-     * @return The data record value.
+     * @return The data record value (with special handling for chain-id and chain-name:).
      */
     function getData(bytes32 _labelhash, string calldata _key) external view returns (bytes memory) {
-        return dataRecords[_labelhash][bytes(_key)];
+        return _getDataWithOverrides(_labelhash, _key);
     }
 
     /**
@@ -374,6 +333,60 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
             result[i - start] = strBytes[i];
         }
         return string(result);
+    }
+
+    /**
+     * @notice Internal function to handle text record keys with overrides
+     * @param _labelhash The labelhash to query
+     * @param _key The text record key
+     * @return The text record value (with overrides for chain-id and chain-name:)
+     */
+    function _getTextWithOverrides(bytes32 _labelhash, string memory _key) internal view returns (string memory) {
+        // Special case for "chain-id" text record
+        if (keccak256(abi.encodePacked(_key)) == keccak256(abi.encodePacked(CHAIN_ID_KEY))) {
+            // Get chain ID bytes from internal registry and encode as hex string
+            bytes memory chainIdBytes = chainIds[_labelhash];
+            return HexUtils.bytesToHex(chainIdBytes);
+        }
+
+        // Check if key starts with "chain-name:" prefix (reverse resolution)
+        bytes memory keyBytes = bytes(_key);
+        bytes memory keyPrefixBytes = bytes(CHAIN_NAME_PREFIX);
+        if (_startsWith(keyBytes, keyPrefixBytes)) {
+            // Extract chainId suffix from key
+            string memory chainIdPart = _substring(_key, keyPrefixBytes.length, keyBytes.length);
+            (bytes memory chainIdBytes,) = HexUtils.hexToBytes(bytes(chainIdPart), 0, bytes(chainIdPart).length);
+            return chainNames[chainIdBytes];
+        }
+
+        // Default: return stored text record
+        return textRecords[_labelhash][_key];
+    }
+
+    /**
+     * @notice Internal function to handle data record keys with overrides
+     * @param _labelhash The labelhash to query
+     * @param _key The data record key
+     * @return The data record value (with overrides for chain-id and chain-name:)
+     */
+    function _getDataWithOverrides(bytes32 _labelhash, string memory _key) internal view returns (bytes memory) {
+        // Special case for "chain-id" data record: return raw 7930 bytes
+        if (keccak256(abi.encodePacked(_key)) == keccak256(abi.encodePacked(CHAIN_ID_KEY))) {
+            return chainIds[_labelhash];
+        }
+
+        // Check if key starts with "chain-name:" prefix (reverse resolution)
+        bytes memory keyBytes = bytes(_key);
+        bytes memory keyPrefixBytes = bytes(CHAIN_NAME_PREFIX);
+        if (_startsWith(keyBytes, keyPrefixBytes)) {
+            // Extract chainId suffix from key
+            string memory chainIdHex = _substring(_key, keyPrefixBytes.length, keyBytes.length);
+            (bytes memory chainIdBytes,) = HexUtils.hexToBytes(bytes(chainIdHex), 0, bytes(chainIdHex).length);
+            return bytes(chainNames[chainIdBytes]);
+        }
+
+        // Default: return stored data record
+        return dataRecords[_labelhash][_key];
     }
 
     /**

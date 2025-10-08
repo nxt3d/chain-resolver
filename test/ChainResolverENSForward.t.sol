@@ -260,4 +260,77 @@ contract ChainResolverENSForwardTest is Test {
 
         console.log("Successfully verified interface support");
     }
+
+    function test_010____resolve_____________________EmptyAddressRecord() public {
+        vm.startPrank(admin);
+        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        vm.stopPrank();
+        
+        // Test resolve with ADDR_SELECTOR when no address is set
+        bytes memory name = abi.encodePacked(bytes1(uint8(bytes(CHAIN_NAME).length)), bytes(CHAIN_NAME), bytes1(0x00));
+        bytes memory addrData = abi.encodeWithSelector(resolver.ADDR_SELECTOR(), LABEL_HASH);
+        bytes memory result = resolver.resolve(name, addrData);
+        
+        // Should return empty bytes for unset address
+        assertEq(result, abi.encode(address(0)));
+        
+        console.log("Successfully handled empty address record");
+    }
+
+    function test_011____resolve_____________________UnknownSelector() public {
+        vm.startPrank(admin);
+        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        vm.stopPrank();
+        
+        // Test resolve with unknown selector
+        bytes memory name = abi.encodePacked(bytes1(uint8(bytes(CHAIN_NAME).length)), bytes(CHAIN_NAME), bytes1(0x00));
+        bytes memory unknownData = abi.encodeWithSelector(bytes4(0x12345678), LABEL_HASH);
+        bytes memory result = resolver.resolve(name, unknownData);
+        
+        // Should return empty string for unknown selector
+        assertEq(result, abi.encode(""));
+        
+        console.log("Successfully handled unknown selector");
+    }
+
+    function test_012____resolve_____________________EmptyAddressRecordWithCoinType() public {
+        vm.startPrank(admin);
+        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        vm.stopPrank();
+        
+        // Test resolve with ADDR_COINTYPE_SELECTOR when no address is set
+        bytes memory name = abi.encodePacked(bytes1(uint8(bytes(CHAIN_NAME).length)), bytes(CHAIN_NAME), bytes1(0x00));
+        bytes memory addrData = abi.encodeWithSelector(resolver.ADDR_COINTYPE_SELECTOR(), LABEL_HASH, 60); // Ethereum coin type
+        bytes memory result = resolver.resolve(name, addrData);
+        
+        // Should return empty bytes for unset address
+        assertEq(result, abi.encode(bytes("")));
+        
+        console.log("Successfully handled empty address record with coin type");
+    }
+
+    function test_013____resolve_____________________ContentHashSelector() public {
+        vm.startPrank(admin);
+        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        vm.stopPrank();
+        
+        vm.startPrank(user1);
+        
+        // Set a content hash
+        bytes memory testContentHash = hex"e301017012201234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+        resolver.setContenthash(LABEL_HASH, testContentHash);
+        
+        // Now resolve it with CONTENTHASH_SELECTOR
+        bytes memory name = abi.encodePacked(bytes1(uint8(bytes(CHAIN_NAME).length)), bytes(CHAIN_NAME), bytes1(0x00));
+        bytes memory contentHashData = abi.encodeWithSelector(resolver.CONTENTHASH_SELECTOR(), LABEL_HASH);
+        bytes memory result = resolver.resolve(name, contentHashData);
+        bytes memory resolvedContentHash = abi.decode(result, (bytes));
+        
+        // Should return the same content hash
+        assertEq(resolvedContentHash, testContentHash);
+        
+        vm.stopPrank();
+        
+        console.log("Successfully resolved content hash via CONTENTHASH_SELECTOR");
+    }
 }

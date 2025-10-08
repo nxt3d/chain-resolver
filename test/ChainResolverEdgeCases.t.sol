@@ -190,4 +190,135 @@ contract ChainResolverEdgeCasesTest is Test {
 
         console.log("Successfully handled interface support");
     }
+
+    function test_008____bytesToAddress_______________RevertsOnInvalidLength() public {
+        vm.startPrank(admin);
+        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        vm.stopPrank();
+        
+        vm.startPrank(user1);
+        
+        // Test setAddr with invalid length (not 20 bytes)
+        bytes memory invalidBytes = hex"1234"; // 2 bytes instead of 20
+        
+        // This should revert because bytesToAddress is internal and requires 20 bytes
+        // We can't directly test this function since it's internal, but we can test
+        // the setAddr function that uses it with invalid data
+        
+        vm.expectRevert();
+        resolver.setAddr(LABEL_HASH, 60, invalidBytes); // Use the coinType version
+        
+        vm.stopPrank();
+        
+        console.log("Successfully reverted on invalid address length");
+    }
+
+    function test_009____setAddr_____________________NonEthereumCoinType() public {
+        vm.startPrank(admin);
+        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        vm.stopPrank();
+        
+        vm.startPrank(user1);
+        
+        // Test setAddr with non-Ethereum coin type
+        address testAddr = address(0x1234567890123456789012345678901234567890);
+        uint256 nonEthereumCoinType = 1; // Bitcoin coin type
+        
+        // This should not revert but should not set the address for non-Ethereum coin types
+        resolver.setAddr(LABEL_HASH, nonEthereumCoinType, abi.encodePacked(testAddr));
+        
+        // The address should not be retrievable via getAddr (which only handles Ethereum)
+        bytes memory retrievedAddr = resolver.getAddr(LABEL_HASH, 60); // Ethereum coin type
+        assertEq(retrievedAddr.length, 0, "Non-Ethereum addresses should not be retrievable via getAddr");
+        
+        vm.stopPrank();
+        
+        console.log("Successfully handled non-Ethereum coin type");
+    }
+
+    function test_010____startsWith__________________DataShorterThanPrefix() public {
+        vm.startPrank(admin);
+        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        vm.stopPrank();
+        
+        vm.startPrank(user1);
+        
+        // Test _startsWith with data shorter than prefix
+        // This tests the internal _startsWith function through setText with chain-name: prefix
+        string memory shortKey = "test-key"; // Regular key that doesn't trigger special handling
+        
+        // This should not revert but should not match the prefix
+        resolver.setText(LABEL_HASH, shortKey, "test-value");
+        
+        // Verify the text was set (not handled by special logic)
+        string memory retrievedValue = resolver.getText(LABEL_HASH, shortKey);
+        assertEq(retrievedValue, "test-value", "Short key should be stored as regular text");
+        
+        vm.stopPrank();
+        
+        console.log("Successfully handled data shorter than prefix");
+    }
+
+    function test_011____startsWith__________________DataDoesNotMatchPrefix() public {
+        vm.startPrank(admin);
+        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        vm.stopPrank();
+        
+        vm.startPrank(user1);
+        
+        // Test _startsWith with data that doesn't match prefix
+        string memory nonMatchingKey = "test-key-2"; // Regular key that doesn't trigger special handling
+        
+        // This should not revert but should not match the prefix
+        resolver.setText(LABEL_HASH, nonMatchingKey, "test-value");
+        
+        // Verify the text was set (not handled by special logic)
+        string memory retrievedValue = resolver.getText(LABEL_HASH, nonMatchingKey);
+        assertEq(retrievedValue, "test-value", "Non-matching key should be stored as regular text");
+        
+        vm.stopPrank();
+        
+        console.log("Successfully handled data that doesn't match prefix");
+    }
+
+    function test_012____bytesToAddress_______________ValidAddressConversion() public {
+        vm.startPrank(admin);
+        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        vm.stopPrank();
+        
+        vm.startPrank(user1);
+        
+        // Test bytesToAddress with valid data through setAddr
+        address testAddr = address(0x1234567890123456789012345678901234567890);
+        resolver.setAddr(LABEL_HASH, testAddr);
+        
+        // Now resolve it to trigger bytesToAddress with valid data
+        bytes memory name = abi.encodePacked(bytes1(uint8(bytes(CHAIN_NAME).length)), bytes(CHAIN_NAME), bytes1(0x00));
+        bytes memory addrData = abi.encodeWithSelector(resolver.ADDR_SELECTOR(), LABEL_HASH);
+        bytes memory result = resolver.resolve(name, addrData);
+        address resolvedAddr = abi.decode(result, (address));
+        
+        // Should return the same address
+        assertEq(resolvedAddr, testAddr);
+        
+        vm.stopPrank();
+        
+        console.log("Successfully converted valid address bytes");
+    }
+
+    function test_013____authenticateCaller___________OwnerIsCaller() public {
+        vm.startPrank(admin);
+        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        vm.stopPrank();
+        
+        // Test _authenticateCaller when owner is the caller
+        vm.startPrank(user1);
+        
+        // This should not revert because user1 is the owner
+        resolver.setText(LABEL_HASH, "test-key", "test-value");
+        
+        vm.stopPrank();
+        
+        console.log("Successfully authenticated owner as caller");
+    }
 }
