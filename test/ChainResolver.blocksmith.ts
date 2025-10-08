@@ -72,6 +72,17 @@ async function main() {
       throw new Error(`Unexpected chain-id hex: ${chainIdHex}`);
     }
 
+    // Also resolve via data(bytes32,string) -> bytes
+    {
+      const DFACE = new Interface(['function data(bytes32,string) view returns (bytes)']);
+      const dcall = DFACE.encodeFunctionData('data(bytes32,string)', [LABEL_HASH, 'chain-id']);
+      const danswer: string = await resolver.resolve(dnsName, dcall);
+      const [cidBytes] = DFACE.decodeFunctionResult('data(bytes32,string)', danswer);
+      if (hex(cidBytes) !== CHAIN_ID_HEX) {
+        throw new Error(`Unexpected chain-id bytes: got=${hex(cidBytes)} want=${CHAIN_ID_HEX}`);
+      }
+    }
+
     // Set and read an ETH address (coinType 60) via the 2-arg overload
     {
       const addr60 = '0x000000000000000000000000000000000000dEaD';

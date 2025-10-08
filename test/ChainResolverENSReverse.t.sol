@@ -30,7 +30,7 @@ contract ChainResolverENSReverseTest is Test {
     function test1100_____________________________ENS_REVERSE____________________________________() public {}
     function test1200________________________________________________________________________________() public {}
 
-    function test_001____resolve_____________________ResolvesReverseChainName() public {
+    function test_001____resolve_____________________ResolvesReverseChainNameText() public {
         vm.startPrank(admin);
 
         // Register a chain

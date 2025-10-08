@@ -100,7 +100,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
             bytes memory keyBytes = bytes(key);
             bytes memory keyPrefixBytes = bytes(CHAIN_NAME_PREFIX);
             if (_startsWith(keyBytes, keyPrefixBytes)) {
-                // Extract chainId suffix from key (string carries raw bytes); look up and return string
+                // Extract chainId suffix from key
                 string memory chainIdPart = _substring(key, keyPrefixBytes.length, keyBytes.length);
                 bytes memory chainIdBytes = bytes(chainIdPart);
                 string memory resolvedChainName = chainNames[chainIdBytes];
@@ -114,11 +114,17 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
             // data(bytes32,string) - decode key and return data value
             (, string memory keyStr) = abi.decode(data[4:], (bytes32, string));
 
+            // Special case for "chain-id" data record: return raw 7930 bytes
+            if (keccak256(abi.encodePacked(keyStr)) == keccak256(abi.encodePacked(CHAIN_ID_KEY))) {
+                bytes memory chainIdBytes = chainIds[labelhash];
+                return abi.encode(chainIdBytes);
+            }
+
             // Check if key starts with "chain-name:" prefix (reverse resolution)
             bytes memory key = bytes(keyStr);
             bytes memory keyPrefixBytes = bytes(CHAIN_NAME_PREFIX);
             if (_startsWith(key, keyPrefixBytes)) {
-                // Extract chainId (hex string) from key after the prefix
+                // Extract chainId suffix from key
                 string memory chainIdHex = _substring(keyStr, keyPrefixBytes.length, key.length);
                 bytes memory chainIdBytes = bytes(chainIdHex);
                 string memory v = chainNames[chainIdBytes];

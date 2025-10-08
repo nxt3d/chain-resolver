@@ -24,10 +24,12 @@ This repo contains a single contract — [`ChainResolver.sol`](src/ChainResolver
 </p>
 
 Forward resolution (label → 7930):
-The ENS field `text(..., "chain-id")` (per [ENSIP‑5](https://docs.ens.domains/ensip/5)) returns the chain’s 7930 ID as a hex. This value is written at registration by the contract owner (e.g., a multisig) and the resolver ignores any user‑set text under that key. To resolve a chain ID:
+The ENS field `text(..., "chain-id")` (per [ENSIP‑5](https://docs.ens.domains/ensip/5)) returns the chain’s 7930 ID as a hex string. The field `data(..., "chain-id")` returns the raw 7930 bytes (per ENSIP‑TBD‑19). This value is written at registration by the contract owner (e.g., a multisig) and the resolver ignores any user‑set text under that key. To resolve a chain ID:
  - DNS‑encode the ENS name (e.g., `optimism.cid.eth`).
  - Compute `labelhash = keccak256(bytes(label))` (e.g., `label = "optimism"`).
- - Call `resolve(name, abi.encodeWithSelector(text(labelhash, "chain-id")))` → returns a hex string.
+ - Calls:
+    -  `resolve(name, abi.encodeWithSelector(text(labelhash, "chain-id")))` → returns a hex string.
+    - `resolve(name, abi.encodeWithSelector(data(labelhash, "chain-id")))` → returns raw bytes.
 
 Reverse resolution (7930 → name):
 - Pass a key prefixed with `"chain-name:"` and suffixed with the 7930 hex via either `text(bytes32,string)` (per ENSIP‑5) or `data(bytes32,string)` (per [ENSIP‑TBD‑19](https://github.com/nxt3d/ensips/blob/ensip-ideas/ensips/ensip-TBD-19.md)); this uses the `chain-name:` service key parameter (per [ENSIP‑TBD‑17](https://github.com/nxt3d/ensips/blob/ensip-ideas/ensips/ensip-TBD-17.md)). For example:
@@ -55,7 +57,7 @@ ENS fields available via `IExtendedResolver.resolve(name,data)`:
 - `addr(bytes32,uint256)` → bytes (raw multi‑coin value) — per [ENSIP‑9](https://docs.ens.domains/ensip/9)
 - `contenthash(bytes32)` → bytes — per [ENSIP‑7](https://docs.ens.domains/ensip/7)
 - `text(bytes32,string)` → string — per ENSIP‑5 (with special handling for `"chain-id"` and `"chain-name:"`)
-- `data(bytes32,string)` → bytes — per ENSIP‑TBD‑19 (with special handling for `"chain-name:"`)
+- `data(bytes32,string)` → bytes — per ENSIP‑TBD‑19 (with special handling for `"chain-id"` and `"chain-name:"`)
 
 ## 7930 Chain Identifier
 

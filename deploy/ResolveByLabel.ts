@@ -73,10 +73,12 @@ try {
     return decoded;
   }
 
-  // Resolve chain-id (hex string, no 0x prefix)
+  // Resolve chain-id via text (hex without 0x) and data (raw bytes)
   try {
     const hexCid = await resolveDecode("text(bytes32,string)", [labelHash, "chain-id"]);
-    console.log(`Chain ID: 0x${hexCid}`);
+    console.log(`Chain ID (text): 0x${hexCid}`);
+    const cidBytes = await resolveDecode("data(bytes32,string)", [labelHash, "chain-id"]);
+    console.log(`Chain ID (data bytes): ${cidBytes}`);
   } catch (e) {
     console.error((e as Error).message);
     process.exit(1);

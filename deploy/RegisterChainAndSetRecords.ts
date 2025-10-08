@@ -12,6 +12,7 @@ import {
 import {
   Contract,
   Interface,
+  dnsEncode,
   keccak256,
   toUtf8Bytes,
   toBeHex,
@@ -149,6 +150,7 @@ try {
     resolverAddress,
     [
       "function owner() view returns (address)",
+      "function resolve(bytes,bytes) view returns (bytes)",
       "function register(string,address,bytes) external",
       "function chainId(bytes32) view returns (bytes)",
       "function chainName(bytes) view returns (string)",
@@ -293,14 +295,33 @@ try {
     console.log("✓ setContenthash");
   }
 
-  if (await promptContinueOrExit(rl, "Set text('avatar')? (y/n): ")) {
-    const url = (await askQuestion(rl, "avatar URL: ")).trim();
-    const tx = await resolver.setText(labelHash, "avatar", url);
-    await tx.wait();
-    console.log("✓ setText(avatar)");
+  // Show chain-id resolution examples
+  if (await promptContinueOrExit(rl, "Resolve chain-id now? (y/n): ")) {
+    const ensName = `${label}.cid.eth`;
+    const dnsName = dnsEncode(ensName, 255);
+    const IFACE = new Interface([
+      'function text(bytes32,string) view returns (string)',
+      'function data(bytes32,string) view returns (bytes)'
+    ]);
+    try {
+      const tcall = IFACE.encodeFunctionData('text(bytes32,string)', [labelHash, 'chain-id']);
+      const tanswer: string = await resolver.resolve(dnsName, tcall);
+      const [hexCid] = IFACE.decodeFunctionResult('text(bytes32,string)', tanswer);
+      console.log('chain-id (text):', '0x' + hexCid);
+    } catch (e: any) {
+      console.warn('text(chain-id) resolve failed:', e?.shortMessage || e?.message || String(e));
+    }
+    try {
+      const dcall = IFACE.encodeFunctionData('data(bytes32,string)', [labelHash, 'chain-id']);
+      const danswer: string = await resolver.resolve(dnsName, dcall);
+      const [cidBytes] = IFACE.decodeFunctionResult('data(bytes32,string)', danswer);
+      console.log('chain-id (data bytes):', cidBytes);
+    } catch (e: any) {
+      console.warn('data(chain-id) resolve failed:', e?.shortMessage || e?.message || String(e));
+    }
   }
 
-  if (await promptContinueOrExit(rl, "Set arbitrary text(key,value)? (y/n): ")) {
+  if (await promptContinueOrExit(rl, "Set text(key,value)? (y/n): ")) {
     const key = (await askQuestion(rl, "text key: ")).trim();
     const val = (await askQuestion(rl, "text value: ")).trim();
     const tx = await resolver.setText(labelHash, key, val);

@@ -49,6 +49,7 @@ try {
 
   // Build key for ChainResolver data() path: 'chain-name:' + raw 7930 bytes (as a latin1 JS string)
   const IFACE = new Interface([
+    "function text(bytes32,string) view returns (string)",
     "function data(bytes32,string) view returns (bytes)",
   ]);
   const key = Buffer.concat([
@@ -60,21 +61,28 @@ try {
   
 
   try {
-    const call = IFACE.encodeFunctionData("data(bytes32,string)", [ZERO_NODE, key]);
-    const answer: string = await resolver.resolve(dnsName, call);
-    const [encoded] = IFACE.decodeFunctionResult("data(bytes32,string)", answer);
-    let name: string;
+    // Reverse via text selector
+    const tcall = IFACE.encodeFunctionData("text(bytes32,string)", [ZERO_NODE, key]);
+    const tanswer: string = await resolver.resolve(dnsName, tcall);
+    const [textName] = IFACE.decodeFunctionResult("text(bytes32,string)", tanswer);
+    console.log('Chain name (text):', textName);
+    console.log('ENS name (text):', textName + '.cid.eth');
+
+    // Reverse via data selector
+    const dcall = IFACE.encodeFunctionData("data(bytes32,string)", [ZERO_NODE, key]);
+    const danswer: string = await resolver.resolve(dnsName, dcall);
+    const [encoded] = IFACE.decodeFunctionResult("data(bytes32,string)", danswer);
+    let dataName: string;
     try {
       // Preferred: abi.encode(string)
-      [name] = AbiCoder.defaultAbiCoder().decode(["string"], encoded);
+      [dataName] = AbiCoder.defaultAbiCoder().decode(["string"], encoded);
     } catch {
       // Fallback: raw UTF-8 bytes
       const hex = (encoded as string).replace(/^0x/, "");
-      name = Buffer.from(hex, "hex").toString("utf8");
+      dataName = Buffer.from(hex, "hex").toString("utf8");
     }
-    // Print just Chainname and ChainId
-    console.log('Chain name:', name);
-    console.log('ENS name:', name + '.cid.eth');
+    console.log('Chain name (data):', dataName);
+    console.log('ENS name (data):', dataName + '.cid.eth');
     // Also show the direct read path
     try {
       const direct = await resolver.chainName(chainIdBytes);

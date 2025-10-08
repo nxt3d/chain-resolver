@@ -190,6 +190,26 @@ contract ChainResolverENSForwardTest is Test {
 
         vm.stopPrank();
 
+        // Test resolve function for chain-id data record (raw bytes) with proper DNS encoding
+        bytes memory name = abi.encodePacked(bytes1(uint8(bytes(CHAIN_NAME).length)), bytes(CHAIN_NAME), bytes1(0x00));
+        bytes memory dataData = abi.encodeWithSelector(resolver.DATA_SELECTOR(), LABEL_HASH, "chain-id");
+        bytes memory result = resolver.resolve(name, dataData);
+        bytes memory resolvedChainIdBytes = abi.decode(result, (bytes));
+
+        // Should return the raw 7930 bytes
+        assertEq(resolvedChainIdBytes, CHAIN_ID, "Should resolve chain-id as raw bytes via data()");
+
+        console.log("Successfully resolved chain-id via data record");
+    }
+
+    function test_008____resolve_____________________ResolvesCustomDataRecord() public {
+        vm.startPrank(admin);
+
+        // Register a chain
+        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+
+        vm.stopPrank();
+
         // Test that we can set and retrieve a custom data record via resolve function
         vm.startPrank(user1);
 

@@ -84,7 +84,9 @@ try {
   const printChainId = await askQuestion(rl, "Resolve chain-id? (y/n): ");
   if (/^y(es)?$/i.test(printChainId.trim())) {
     const hexCid = await resolveDecode<string>('text(bytes32,string)', [labelHash, 'chain-id']);
-    console.log('chain-id:', '0x' + hexCid);
+    console.log('chain-id (text):', '0x' + hexCid);
+    const cidBytes = await resolveDecode<string>('data(bytes32,string)', [labelHash, 'chain-id']);
+    console.log('chain-id (data bytes):', cidBytes);
   }
 
   // addr(60)
