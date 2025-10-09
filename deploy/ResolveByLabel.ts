@@ -62,22 +62,23 @@ try {
   const label = (await askQuestion(rl, "Label (e.g. optimism): ")).trim();
   const ensName = `${label}.cid.eth`;
   const dnsName = dnsEncode(ensName, 255);
-  const labelHash = keccak256(toUtf8Bytes(label));
-  console.log("Using:", { ensName, labelHash });
+  const labelhash = keccak256(toUtf8Bytes(label));
+  console.log("Using:", { ensName, labelhash });
 
   // Helper to call resolve() and decode results for standard records
+  // Encodes calldata for a given signature, calls resolve(), and decodes the return value
   async function resolveDecode(sig: string, args: any[]) {
-    const call = IFACE.encodeFunctionData(sig, args);
-    const answer: string = await resolver.resolve(dnsName, call);
-    const [decoded] = IFACE.decodeFunctionResult(sig, answer);
+    const methodCalldata = IFACE.encodeFunctionData(sig, args);
+    const methodAnswer: string = await resolver.resolve(dnsName, methodCalldata);
+    const [decoded] = IFACE.decodeFunctionResult(sig, methodAnswer);
     return decoded;
   }
 
   // Resolve chain-id via text (hex without 0x) and data (raw bytes)
   try {
-    const hexCid = await resolveDecode("text(bytes32,string)", [labelHash, "chain-id"]);
+    const hexCid = await resolveDecode("text(bytes32,string)", [labelhash, "chain-id"]);
     console.log(`Chain ID (text): 0x${hexCid}`);
-    const cidBytes = await resolveDecode("data(bytes32,string)", [labelHash, "chain-id"]);
+    const cidBytes = await resolveDecode("data(bytes32,string)", [labelhash, "chain-id"]);
     console.log(`Chain ID (data bytes): ${cidBytes}`);
   } catch (e) {
     console.error((e as Error).message);

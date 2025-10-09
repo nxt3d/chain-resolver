@@ -68,31 +68,33 @@ try {
     console.error('Label is required.');
     process.exit(1);
   }
-  const labelHash = keccak256(toUtf8Bytes(label));
+  const labelhash = keccak256(toUtf8Bytes(label));
   const ensName = `${label}.cid.eth`;
   const dnsName = dnsEncode(ensName, 255);
-  console.log('Using:', { ensName, labelHash });
+  console.log('Using:', { ensName, labelhash });
 
+  // Helper to call resolve() and decode results for standard records
+  // Encodes calldata for a given signature, calls resolve(), and decodes the return value
   async function resolveDecode<T = any>(sig: string, args: any[]): Promise<T> {
-    const call = IFACE.encodeFunctionData(sig, args);
-    const answer: string = await resolver.resolve(dnsName, call);
-    const [decoded] = IFACE.decodeFunctionResult(sig, answer);
+    const methodCalldata = IFACE.encodeFunctionData(sig, args);
+    const methodAnswer: string = await resolver.resolve(dnsName, methodCalldata);
+    const [decoded] = IFACE.decodeFunctionResult(sig, methodAnswer);
     return decoded as T;
   }
 
   // chain-id
   const printChainId = await askQuestion(rl, "Resolve chain-id? (y/n): ");
   if (/^y(es)?$/i.test(printChainId.trim())) {
-    const hexCid = await resolveDecode<string>('text(bytes32,string)', [labelHash, 'chain-id']);
+    const hexCid = await resolveDecode<string>('text(bytes32,string)', [labelhash, 'chain-id']);
     console.log('chain-id (text):', '0x' + hexCid);
-    const cidBytes = await resolveDecode<string>('data(bytes32,string)', [labelHash, 'chain-id']);
+    const cidBytes = await resolveDecode<string>('data(bytes32,string)', [labelhash, 'chain-id']);
     console.log('chain-id (data bytes):', cidBytes);
   }
 
   // addr(60)
   const wantAddr60 = await askQuestion(rl, 'Resolve addr(60)? (y/n): ');
   if (/^y(es)?$/i.test(wantAddr60.trim())) {
-    const addr = await resolveDecode<string>('addr(bytes32)', [labelHash]);
+    const addr = await resolveDecode<string>('addr(bytes32)', [labelhash]);
     console.log('addr(60):', addr);
   }
 
@@ -107,7 +109,7 @@ try {
       console.warn('Invalid coinType; skipping custom addr.');
     }
     if (coinType !== undefined) {
-      const bytesVal = await resolveDecode<string>('addr(bytes32,uint256)', [labelHash, coinType]);
+      const bytesVal = await resolveDecode<string>('addr(bytes32,uint256)', [labelhash, coinType]);
       console.log(`addr(${coinType}) bytes:`, bytesVal);
     }
   }
@@ -115,7 +117,7 @@ try {
   // contenthash
   const wantCH = await askQuestion(rl, 'Resolve contenthash? (y/n): ');
   if (/^y(es)?$/i.test(wantCH.trim())) {
-    const chHex = await resolveDecode<string>('contenthash(bytes32)', [labelHash]);
+    const chHex = await resolveDecode<string>('contenthash(bytes32)', [labelhash]);
     if (!chHex || chHex === '0x') {
       console.log('contenthash: (empty)');
     } else {
@@ -146,7 +148,7 @@ try {
       }
       return kIn;
     })();
-    const val = await resolveDecode<string>('text(bytes32,string)', [labelHash, key]);
+    const val = await resolveDecode<string>('text(bytes32,string)', [labelhash, key]);
     console.log(`text(${key}):`, val);
   }
 
@@ -163,7 +165,7 @@ try {
       return kIn;
     })();
 
-    const bytesVal = await resolveDecode<string>('data(bytes32,string)', [labelHash, key]);
+    const bytesVal = await resolveDecode<string>('data(bytes32,string)', [labelhash, key]);
     let pretty: string;
     try {
       [pretty] = AbiCoder.defaultAbiCoder().decode(['string'], bytesVal);

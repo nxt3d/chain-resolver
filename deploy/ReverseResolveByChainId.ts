@@ -58,21 +58,20 @@ try {
   
 
   try {
-    // Try hex-suffix service key only
     let textName = '';
     try {
-      const tcall = IFACE.encodeFunctionData("text(bytes32,string)", [ZERO_NODE, key]);
-      const tanswer: string = await resolver.resolve(dnsName, tcall);
-      [textName] = IFACE.decodeFunctionResult("text(bytes32,string)", tanswer) as [string];
+      const textCalldata = IFACE.encodeFunctionData("text(bytes32,string)", [ZERO_NODE, key]);
+      const textAnswer: string = await resolver.resolve(dnsName, textCalldata);
+      [textName] = IFACE.decodeFunctionResult("text(bytes32,string)", textAnswer) as [string];
     } catch {}
 
     let dataName = '';
     try {
-      const dcall = IFACE.encodeFunctionData("data(bytes32,string)", [ZERO_NODE, key]);
-      const danswer: string = await resolver.resolve(dnsName, dcall);
-      const [encoded] = IFACE.decodeFunctionResult("data(bytes32,string)", danswer) as [`0x${string}`];
-      try { [dataName] = AbiCoder.defaultAbiCoder().decode(["string"], encoded) as [string]; }
-      catch { dataName = Buffer.from((encoded as string).replace(/^0x/, ''), 'hex').toString('utf8'); }
+      const dataCalldata = IFACE.encodeFunctionData("data(bytes32,string)", [ZERO_NODE, key]);
+      const dataAnswer: string = await resolver.resolve(dnsName, dataCalldata);
+      const [dataEncoded] = IFACE.decodeFunctionResult("data(bytes32,string)", dataAnswer) as [`0x${string}`];
+      try { [dataName] = AbiCoder.defaultAbiCoder().decode(["string"], dataEncoded) as [string]; }
+      catch { dataName = Buffer.from((dataEncoded as string).replace(/^0x/, ''), 'hex').toString('utf8'); }
     } catch {}
 
     console.log('Chain name (text):', textName);

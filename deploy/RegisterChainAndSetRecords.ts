@@ -169,7 +169,7 @@ try {
   try { console.log("Contract owner:", await resolver.owner()); } catch {}
   console.log("Caller:", deployerWallet.address);
   const label = (await askQuestion(rl, "Chain label (e.g. optimism): ")).trim();
-  const labelHash = keccak256(toUtf8Bytes(label));
+  const labelhash = keccak256(toUtf8Bytes(label));
   let cidIn = (await askQuestion(rl, "Chain ID (hex 0x.. or decimal): ")).trim();
   if (!isHexString(cidIn)) cidIn = toBeHex(BigInt(cidIn));
   const ownerIn = (await askQuestion(rl, `Owner [default ${deployerWallet.address}]: `)).trim();
@@ -204,10 +204,10 @@ try {
 
   // Quick sanity
   try {
-    const cid = await resolver.chainId(labelHash);
+    const cid = await resolver.chainId(labelhash);
     const name = await resolver.chainName(cid);
     console.log("chainId:", cid, "chainName:", name);
-    try { console.log("label owner:", await resolver.getOwner(labelHash)); } catch {}
+    try { console.log("label owner:", await resolver.getOwner(labelhash)); } catch {}
   } catch {}
 
   // Optional records
@@ -217,7 +217,7 @@ try {
     const a60 = (await askQuestion(rl, "ETH address: ")).trim();
     try {
       const setAddr60 = resolver.getFunction("setAddr(bytes32,address)");
-      const tx = await setAddr60(labelHash, a60);
+      const tx = await setAddr60(labelhash, a60);
       await tx.wait();
       console.log("✓ setAddr(60)");
     } catch (e: any) {
@@ -230,14 +230,14 @@ try {
           const parsed = errIface.parseError(data);
           if (parsed?.name === 'NotAuthorized') {
             const [who, lh] = parsed.args as any[];
-            console.error(`✗ NotAuthorized: caller=${who} labelHash=${lh}`);
+            console.error(`✗ NotAuthorized: caller=${who} labelhash=${lh}`);
           }
         }
       } catch {}
       try {
         const data = new Interface(["function setAddr(bytes32,address)"]).encodeFunctionData(
           "setAddr(bytes32,address)",
-          [labelHash, a60]
+          [labelhash, a60]
         );
         const sent = await deployerWallet.sendTransaction({ to: resolverAddress, data, gasLimit: 200000n });
         await sent.wait();
@@ -256,7 +256,7 @@ try {
     const val = toBytesLike(addr);
     try {
       const setAddrBytes = resolver.getFunction("setAddr(bytes32,uint256,bytes)");
-      const tx = await setAddrBytes(labelHash, ct, val);
+      const tx = await setAddrBytes(labelhash, ct, val);
       await tx.wait();
       console.log(`✓ setAddr(${ct})`);
     } catch (e: any) {
@@ -268,14 +268,14 @@ try {
           const parsed = errIface.parseError(data);
           if (parsed?.name === 'NotAuthorized') {
             const [who, lh] = parsed.args as any[];
-            console.error(`✗ NotAuthorized: caller=${who} labelHash=${lh}`);
+            console.error(`✗ NotAuthorized: caller=${who} labelhash=${lh}`);
           }
         }
       } catch {}
       try {
         const data = new Interface(["function setAddr(bytes32,uint256,bytes)"]).encodeFunctionData(
           "setAddr(bytes32,uint256,bytes)",
-          [labelHash, ct, val]
+          [labelhash, ct, val]
         );
         const sent = await deployerWallet.sendTransaction({ to: resolverAddress, data, gasLimit: 250000n });
         await sent.wait();
@@ -290,7 +290,7 @@ try {
   if (await promptContinueOrExit(rl, "Set contenthash? (y/n): ")) {
     const chIn = (await askQuestion(rl, "contenthash (ipfs://, ipns://, bzz:// or 0x..): ")).trim();
     const ch = await encodeContenthash(chIn);
-    const tx = await resolver.setContenthash(labelHash, ch);
+    const tx = await resolver.setContenthash(labelhash, ch);
     await tx.wait();
     console.log("✓ setContenthash");
   }
@@ -304,17 +304,19 @@ try {
       'function data(bytes32,string) view returns (bytes)'
     ]);
     try {
-      const tcall = IFACE.encodeFunctionData('text(bytes32,string)', [labelHash, 'chain-id']);
-      const tanswer: string = await resolver.resolve(dnsName, tcall);
-      const [hexCid] = IFACE.decodeFunctionResult('text(bytes32,string)', tanswer);
+      // Resolve chain-id via text(bytes32,string)
+      const textCalldata = IFACE.encodeFunctionData('text(bytes32,string)', [labelhash, 'chain-id']);
+      const textAnswer: string = await resolver.resolve(dnsName, textCalldata);
+      const [hexCid] = IFACE.decodeFunctionResult('text(bytes32,string)', textAnswer);
       console.log('chain-id (text):', '0x' + hexCid);
     } catch (e: any) {
       console.warn('text(chain-id) resolve failed:', e?.shortMessage || e?.message || String(e));
     }
     try {
-      const dcall = IFACE.encodeFunctionData('data(bytes32,string)', [labelHash, 'chain-id']);
-      const danswer: string = await resolver.resolve(dnsName, dcall);
-      const [cidBytes] = IFACE.decodeFunctionResult('data(bytes32,string)', danswer);
+      // Resolve chain-id via data(bytes32,string)
+      const dataCalldata = IFACE.encodeFunctionData('data(bytes32,string)', [labelhash, 'chain-id']);
+      const dataAnswer: string = await resolver.resolve(dnsName, dataCalldata);
+      const [cidBytes] = IFACE.decodeFunctionResult('data(bytes32,string)', dataAnswer);
       console.log('chain-id (data bytes):', cidBytes);
     } catch (e: any) {
       console.warn('data(chain-id) resolve failed:', e?.shortMessage || e?.message || String(e));
@@ -324,7 +326,7 @@ try {
   if (await promptContinueOrExit(rl, "Set text(key,value)? (y/n): ")) {
     const key = (await askQuestion(rl, "text key: ")).trim();
     const val = (await askQuestion(rl, "text value: ")).trim();
-    const tx = await resolver.setText(labelHash, key, val);
+    const tx = await resolver.setText(labelhash, key, val);
     await tx.wait();
     console.log(`✓ setText(${key})`);
   }
@@ -333,7 +335,7 @@ try {
     const k = (await askQuestion(rl, "data key (string): ")).trim();
     const v = (await askQuestion(rl, "data value (utf8 or 0x..): ")).trim();
     const valBytes = toBytesLike(v);
-    const tx = await resolver.setData(labelHash, k, valBytes);
+    const tx = await resolver.setData(labelhash, k, valBytes);
     await tx.wait();
     console.log("✓ setData");
   }

@@ -1,4 +1,4 @@
-// Set records for a label via ENSIP-10-compatible setters
+// Set records for a label
 import 'dotenv/config'
 
 import { init } from './libs/init.ts';
@@ -122,13 +122,13 @@ try {
     console.error('Label is required.');
     process.exit(1);
   }
-  const labelHash = keccak256(toUtf8Bytes(label));
-  console.log('Using:', { label, labelHash });
+  const labelhash = keccak256(toUtf8Bytes(label));
+  console.log('Using:', { label, labelhash });
 
   // Set addr(60)
   if (await promptContinueOrExit(rl, 'Set addr(60)? (y/n): ')) {
     const a60 = (await askQuestion(rl, 'ETH address: ')).trim();
-    const tx = await resolver.setAddr(labelHash, a60);
+    const tx = await resolver.setAddr(labelhash, a60);
     await tx.wait();
     console.log('✓ setAddr(60)');
   }
@@ -139,7 +139,7 @@ try {
     const coinType = BigInt(coinTypeStr);
     const addr = (await askQuestion(rl, 'address (bytes: 0x.. or utf8): ')).trim();
     const val = toBytesLike(addr);
-    const tx = await resolver.setAddr(labelHash, coinType, val);
+    const tx = await resolver.setAddr(labelhash, coinType, val);
     await tx.wait();
     console.log(`✓ setAddr(${coinType})`);
   }
@@ -148,7 +148,7 @@ try {
   if (await promptContinueOrExit(rl, 'Set contenthash? (y/n): ')) {
     const chIn = (await askQuestion(rl, 'contenthash (ipfs://, ipns://, bzz:// or 0x..): ')).trim();
     const ch = await encodeContenthash(chIn);
-    const tx = await resolver.setContenthash(labelHash, ch);
+    const tx = await resolver.setContenthash(labelhash, ch);
     await tx.wait();
     console.log('✓ setContenthash');
   }
@@ -157,7 +157,7 @@ try {
   if (await promptContinueOrExit(rl, 'Set text(key,value)? (y/n): ')) {
     const key = (await askQuestion(rl, 'text key: ')).trim();
     const val = (await askQuestion(rl, 'text value: ')).trim();
-    const tx = await resolver.setText(labelHash, key, val);
+    const tx = await resolver.setText(labelhash, key, val);
     await tx.wait();
     console.log(`✓ setText(${key})`);
   }
@@ -167,7 +167,7 @@ try {
     const k = (await askQuestion(rl, 'data key (string): ')).trim();
     const v = (await askQuestion(rl, 'data value (utf8 or 0x..): ')).trim();
     const valBytes = toBytesLike(v);
-    const tx = await resolver.setData(labelHash, k, valBytes);
+    const tx = await resolver.setData(labelhash, k, valBytes);
     await tx.wait();
     console.log('✓ setData');
   }
