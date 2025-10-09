@@ -344,6 +344,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     function _getTextWithOverrides(bytes32 _labelhash, string memory _key) internal view returns (string memory) {
         // Special case for "chain-id" text record
         // When client requests text record with key "chain-id", return the chain's ERC-7930 identifier as hex string
+        // Note: Resolving ERC-7930 chain IDs via data record (raw bytes) is preferred, but text record is included for compatibility with ENSIP-5
         if (keccak256(abi.encodePacked(_key)) == keccak256(abi.encodePacked(CHAIN_ID_KEY))) {
             // Get chain ID bytes from internal registry and encode as hex string
             bytes memory chainIdBytes = chainIds[_labelhash];
