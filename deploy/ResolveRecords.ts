@@ -137,7 +137,15 @@ try {
   // text(key)
   const wantText = await askQuestion(rl, 'Resolve text(key)? (y/n): ');
   if (/^y(es)?$/i.test(wantText.trim())) {
-    const key = (await askQuestion(rl, 'text key: ')).trim();
+    const kIn = (await askQuestion(rl, 'text key (e.g. chain-name:<7930-hex>): ')).trim();
+    const key = (() => {
+      const prefix = 'chain-name:';
+      if (kIn.startsWith(prefix)) {
+        const hex = kIn.slice(prefix.length).replace(/^0x/, '');
+        return prefix + hex;
+      }
+      return kIn;
+    })();
     const val = await resolveDecode<string>('text(bytes32,string)', [labelHash, key]);
     console.log(`text(${key}):`, val);
   }
@@ -149,14 +157,8 @@ try {
     const key = (() => {
       const prefix = 'chain-name:';
       if (kIn.startsWith(prefix)) {
-        const suffix = kIn.slice(prefix.length);
-        const hex = suffix.replace(/^0x/, '');
-        if (/^[0-9a-fA-F]+$/.test(hex) && hex.length % 2 === 0) {
-          return Buffer.concat([
-            Buffer.from(prefix, 'utf8'),
-            Buffer.from(hex, 'hex'),
-          ]).toString('latin1');
-        }
+        const hex = kIn.slice(prefix.length).replace(/^0x/, '');
+        return prefix + hex;
       }
       return kIn;
     })();

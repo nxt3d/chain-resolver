@@ -47,43 +47,38 @@ try {
   }
   const chainIdBytes = getBytes(cidIn);
 
-  // Build key for ChainResolver data() path: 'chain-name:' + raw 7930 bytes (as a latin1 JS string)
+  // Build key for ChainResolver reverse path: 'chain-name:' + <7930 hex suffix>
   const IFACE = new Interface([
     "function text(bytes32,string) view returns (string)",
     "function data(bytes32,string) view returns (bytes)",
   ]);
-  const key = Buffer.concat([
-    Buffer.from('chain-name:', 'utf8'),
-    Buffer.from(chainIdBytes)
-  ]).toString('latin1');
+  const key = 'chain-name:' + Buffer.from(chainIdBytes).toString('hex');
   const dnsName = dnsEncode("x.cid.eth", 255); // any label works; reverse uses key
   const ZERO_NODE = "0x" + "0".repeat(64);
   
 
   try {
-    // Reverse via text selector
-    const tcall = IFACE.encodeFunctionData("text(bytes32,string)", [ZERO_NODE, key]);
-    const tanswer: string = await resolver.resolve(dnsName, tcall);
-    const [textName] = IFACE.decodeFunctionResult("text(bytes32,string)", tanswer);
-    console.log('Chain name (text):', textName);
-    console.log('ENS name (text):', textName + '.cid.eth');
-
-    // Reverse via data selector
-    const dcall = IFACE.encodeFunctionData("data(bytes32,string)", [ZERO_NODE, key]);
-    const danswer: string = await resolver.resolve(dnsName, dcall);
-    const [encoded] = IFACE.decodeFunctionResult("data(bytes32,string)", danswer);
-    let dataName: string;
+    // Try hex-suffix service key only
+    let textName = '';
     try {
-      // Preferred: abi.encode(string)
-      [dataName] = AbiCoder.defaultAbiCoder().decode(["string"], encoded);
-    } catch {
-      // Fallback: raw UTF-8 bytes
-      const hex = (encoded as string).replace(/^0x/, "");
-      dataName = Buffer.from(hex, "hex").toString("utf8");
-    }
+      const tcall = IFACE.encodeFunctionData("text(bytes32,string)", [ZERO_NODE, key]);
+      const tanswer: string = await resolver.resolve(dnsName, tcall);
+      [textName] = IFACE.decodeFunctionResult("text(bytes32,string)", tanswer) as [string];
+    } catch {}
+
+    let dataName = '';
+    try {
+      const dcall = IFACE.encodeFunctionData("data(bytes32,string)", [ZERO_NODE, key]);
+      const danswer: string = await resolver.resolve(dnsName, dcall);
+      const [encoded] = IFACE.decodeFunctionResult("data(bytes32,string)", danswer) as [`0x${string}`];
+      try { [dataName] = AbiCoder.defaultAbiCoder().decode(["string"], encoded) as [string]; }
+      catch { dataName = Buffer.from((encoded as string).replace(/^0x/, ''), 'hex').toString('utf8'); }
+    } catch {}
+
+    console.log('Chain name (text):', textName);
     console.log('Chain name (data):', dataName);
-    console.log('ENS name (data):', dataName + '.cid.eth');
-    // Also show the direct read path
+
+    // 3) Also show the direct read path
     try {
       const direct = await resolver.chainName(chainIdBytes);
       console.log('Direct read (chainName):', direct);
