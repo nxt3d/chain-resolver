@@ -155,31 +155,15 @@ try {
   // data(key)
   const wantData = await askQuestion(rl, 'Resolve data(key)? (y/n): ');
   if (/^y(es)?$/i.test(wantData.trim())) {
-    const kIn = (await askQuestion(rl, 'data key (string, e.g. chain-name:<7930-hex>): ')).trim();
-    const key = (() => {
-      const prefix = 'chain-name:';
-      if (kIn.startsWith(prefix)) {
-        // Reverse resolution is a text() record; route to text.
-        const hex = kIn.slice(prefix.length).replace(/^0x/, '');
-        return prefix + hex;
-      }
-      return kIn;
-    })();
-
-    const prefix = 'chain-name:';
-    if (key.startsWith(prefix)) {
-      const val = await resolveDecode<string>('text(bytes32,string)', [labelhash, key]);
-      console.log(`text(${key}):`, val);
-    } else {
-      const bytesVal = await resolveDecode<string>('data(bytes32,string)', [labelhash, key]);
-      let pretty: string;
-      try {
-        [pretty] = AbiCoder.defaultAbiCoder().decode(['string'], bytesVal);
-      } catch {
-        pretty = Buffer.from(bytesVal.replace(/^0x/, ''), 'hex').toString('utf8');
-      }
-      console.log('data:', pretty);
+    const key = (await askQuestion(rl, 'data key (string): ')).trim();
+    const bytesVal = await resolveDecode<string>('data(bytes32,string)', [labelhash, key]);
+    let pretty: string;
+    try {
+      [pretty] = AbiCoder.defaultAbiCoder().decode(['string'], bytesVal);
+    } catch {
+      pretty = Buffer.from(bytesVal.replace(/^0x/, ''), 'hex').toString('utf8');
     }
+    console.log('data:', pretty);
   }
 
   console.log('Done.');
