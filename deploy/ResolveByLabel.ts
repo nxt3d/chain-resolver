@@ -52,50 +52,38 @@ try {
   // ABI for encoding/decoding queries through ENSIP-10
   const IFACE = new Interface([
     "function addr(bytes32) view returns (address)",
-    "function addr(bytes32,uint256) view returns (address)",
+    "function addr(bytes32,uint256) view returns (bytes)",
     "function contenthash(bytes32) view returns (bytes)",
     "function text(bytes32,string) view returns (string)",
-    "function data(bytes32,bytes) view returns (bytes)",
+    "function data(bytes32,string) view returns (bytes)",
   ]);
 
   // Gather label and prepare DNS/namehash inputs
   const label = (await askQuestion(rl, "Label (e.g. optimism): ")).trim();
   const ensName = `${label}.cid.eth`;
   const dnsName = dnsEncode(ensName, 255);
-  const labelHash = keccak256(toUtf8Bytes(label));
-  console.log("Using:", { ensName, labelHash });
+  const labelhash = keccak256(toUtf8Bytes(label));
+  console.log("Using:", { ensName, labelhash });
 
   // Helper to call resolve() and decode results for standard records
+  // Encodes calldata for a given signature, calls resolve(), and decodes the return value
   async function resolveDecode(sig: string, args: any[]) {
-    const call = IFACE.encodeFunctionData(sig, args);
-    const answer: string = await resolver.resolve(dnsName, call);
-    const [decoded] = IFACE.decodeFunctionResult(sig, answer);
+    const methodCalldata = IFACE.encodeFunctionData(sig, args);
+    const methodAnswer: string = await resolver.resolve(dnsName, methodCalldata);
+    const [decoded] = IFACE.decodeFunctionResult(sig, methodAnswer);
     return decoded;
   }
 
-  // Resolve chain-id once, preferring data() raw bytes then falling back to text()
-  function ensure0x(s: string): string {
-    return s.startsWith("0x") ? s : `0x${s}`;
-  }
-
-  let chainIdHex: string | undefined;
+  // Resolve chain-id via text (hex without 0x) and data (raw bytes)
   try {
-    const call = IFACE.encodeFunctionData("data(bytes32,bytes)", [labelHash, toBytesLike("chain-id")]);
-    const raw: string = await resolver.resolve(dnsName, call); // expected 0x-prefixed bytes
-    chainIdHex = ensure0x(raw);
-  } catch {}
-
-  if (!chainIdHex) {
-    try {
-      const hexCid = await resolveDecode("text(bytes32,string)", [labelHash, "chain-id"]); // sans 0x
-      chainIdHex = ensure0x(hexCid);
-    } catch (e) {
-      console.error((e as Error).message);
-      process.exit(1);
-    }
+    const hexCid = await resolveDecode("text(bytes32,string)", [labelhash, "chain-id"]);
+    console.log(`Chain ID (text): 0x${hexCid}`);
+    const cidBytes = await resolveDecode("data(bytes32,string)", [labelhash, "chain-id"]);
+    console.log(`Chain ID (data bytes): ${cidBytes}`);
+  } catch (e) {
+    console.error((e as Error).message);
+    process.exit(1);
   }
-
-  console.log(`Chain ID: ${chainIdHex}`);
 } finally {
   await shutdownSmith(rl, smith);
 }
