@@ -49,8 +49,8 @@ try {
 
   // Build key for ChainResolver reverse path: 'chain-name:' + <7930 hex suffix>
   const IFACE = new Interface([
+    // Reverse resolution: use text(bytes32,string) only
     "function text(bytes32,string) view returns (string)",
-    "function data(bytes32,string) view returns (bytes)",
   ]);
   const key = 'chain-name:' + Buffer.from(chainIdBytes).toString('hex');
   const dnsName = dnsEncode("x.cid.eth", 255); // any label works; reverse uses key
@@ -65,17 +65,7 @@ try {
       [textName] = IFACE.decodeFunctionResult("text(bytes32,string)", textAnswer) as [string];
     } catch {}
 
-    let dataName = '';
-    try {
-      const dataCalldata = IFACE.encodeFunctionData("data(bytes32,string)", [ZERO_NODE, key]);
-      const dataAnswer: string = await resolver.resolve(dnsName, dataCalldata);
-      const [dataEncoded] = IFACE.decodeFunctionResult("data(bytes32,string)", dataAnswer) as [`0x${string}`];
-      try { [dataName] = AbiCoder.defaultAbiCoder().decode(["string"], dataEncoded) as [string]; }
-      catch { dataName = Buffer.from((dataEncoded as string).replace(/^0x/, ''), 'hex').toString('utf8'); }
-    } catch {}
-
     console.log('Chain name (text):', textName);
-    console.log('Chain name (data):', dataName);
 
     // 3) Also show the direct read path
     try {

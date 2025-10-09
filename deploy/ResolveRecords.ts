@@ -159,20 +159,27 @@ try {
     const key = (() => {
       const prefix = 'chain-name:';
       if (kIn.startsWith(prefix)) {
+        // Reverse resolution is a text() record; route to text.
         const hex = kIn.slice(prefix.length).replace(/^0x/, '');
         return prefix + hex;
       }
       return kIn;
     })();
 
-    const bytesVal = await resolveDecode<string>('data(bytes32,string)', [labelhash, key]);
-    let pretty: string;
-    try {
-      [pretty] = AbiCoder.defaultAbiCoder().decode(['string'], bytesVal);
-    } catch {
-      pretty = Buffer.from(bytesVal.replace(/^0x/, ''), 'hex').toString('utf8');
+    const prefix = 'chain-name:';
+    if (key.startsWith(prefix)) {
+      const val = await resolveDecode<string>('text(bytes32,string)', [labelhash, key]);
+      console.log(`text(${key}):`, val);
+    } else {
+      const bytesVal = await resolveDecode<string>('data(bytes32,string)', [labelhash, key]);
+      let pretty: string;
+      try {
+        [pretty] = AbiCoder.defaultAbiCoder().decode(['string'], bytesVal);
+      } catch {
+        pretty = Buffer.from(bytesVal.replace(/^0x/, ''), 'hex').toString('utf8');
+      }
+      console.log('data:', pretty);
     }
-    console.log('data:', pretty);
   }
 
   console.log('Done.');
