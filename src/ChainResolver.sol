@@ -3,8 +3,8 @@ pragma solidity ^0.8.25;
 
 /**
  * @title ChainResolver
- * @author Unruggable Labs
- * @notice Unified contract for ENS record resolution, reverse resolution, and chain data management.
+ * @author Unruggable
+ * @notice ENS resolver for chain ID registration and resolution with 7930 identifiers.
  * @dev Based on Wonderland's L2Resolver.
  * @dev Repository: https://github.com/unruggable-labs/chain-resolver
  */
@@ -60,7 +60,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     /**
      * @notice Resolve data for a DNS-encoded name using ENSIP-10 interface.
      * @param name The DNS-encoded name.
-     * @param data The ABI-encoded ENS method call data.
+     * @param data The ABI-encoded ENS method calldata.
      * @return The resolved data based on the method selector.
      */
     function resolve(bytes calldata name, bytes calldata data) external view override returns (bytes memory) {
@@ -370,7 +370,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
      * @return The data record value (with overrides for chain-id and chain-name:)
      */
     function _getDataWithOverrides(bytes32 _labelhash, string memory _key) internal view returns (bytes memory) {
-        // Special case for "chain-id" data record: return raw 7930 bytes
+        // Special case for "chain-id" data record: return raw ERC-7930 bytes
         if (keccak256(abi.encodePacked(_key)) == keccak256(abi.encodePacked(CHAIN_ID_KEY))) {
             return chainIds[_labelhash];
         }
