@@ -53,7 +53,8 @@ try {
     "function text(bytes32,string) view returns (string)",
   ]);
   const key = 'chain-name:' + Buffer.from(chainIdBytes).toString('hex');
-  const dnsName = dnsEncode("x.cid.eth", 255); // any label works; reverse uses key
+  // Reverse chain-name lookups are only served when the query name is reverse.<namespace>.eth
+  const dnsName = dnsEncode("reverse.cid.eth", 255);
   const ZERO_NODE = "0x" + "0".repeat(64);
   
 
