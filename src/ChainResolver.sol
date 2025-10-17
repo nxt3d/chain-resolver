@@ -42,8 +42,6 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     string public constant CHAIN_ID_KEY = "chain-id";
     string public constant CHAIN_NAME_KEY = "chain-name";
     string public constant CHAIN_NAME_PREFIX = "chain-name:";
-    // Reverse root reference name for exact matching
-    string private constant REVERSE_CID_ETH = "reverse.cid.eth";
 
     // Chain data storage
     mapping(bytes32 _labelhash => bytes _chainId) internal chainIds;
@@ -334,16 +332,16 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
 
     /**
      * @notice Return the chain label and chain name at a given index.
-     * @param index The index in the chain list
-     * @return chainLabel The short chain label (e.g., "chain1")
-     * @return chainName The chain name (e.g., "Chain One")
+     * @param _index The index in the chain list
+     * @return _chainLabel The short chain label (e.g., "chain1")
+     * @return _chainName The chain name (e.g., "Chain One")
      */
-    function getChainAtIndex(uint256 index) external view returns (string memory chainLabel, string memory chainName) {
-        if (index >= _chainLabelList.length) revert InvalidDataLength();
-        bytes32 lh = _chainLabelList[index];
-        chainLabel = chainLabels[lh];
+    function getChainAtIndex(uint256 _index) external view returns (string memory _chainLabel, string memory _chainName) {
+        if (_index >= _chainLabelList.length) revert InvalidDataLength();
+        bytes32 lh = _chainLabelList[_index];
+        _chainLabel = chainLabels[lh];
         bytes memory cid = chainIds[lh];
-        chainName = chainNames[cid];
+        _chainName = chainNames[cid];
     }
 
     /**

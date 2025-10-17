@@ -54,9 +54,9 @@ try {
   ]);
   const key = 'chain-name:' + Buffer.from(chainIdBytes).toString('hex');
   // Reverse chain-name lookups are served only when:
-  // - name = '<namespace>.eth' and
-  // - node = namehash('reverse.<namespace>.eth')
-  const dnsName = dnsEncode("cid.eth", 255);
+  // - name = 'reverse.<namespace>.eth' and
+  // - node = namehash(name)
+  const dnsName = dnsEncode("reverse.cid.eth", 255);
   const reverseNode = namehash("reverse.cid.eth");
   
 

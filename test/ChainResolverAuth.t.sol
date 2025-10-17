@@ -34,7 +34,7 @@ contract ChainResolverAuthTest is Test {
         vm.startPrank(admin);
 
         // Register a chain legitimately
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -42,7 +42,7 @@ contract ChainResolverAuthTest is Test {
         vm.startPrank(attacker);
 
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, attacker));
-        resolver.register("attacker-label", attacker, hex"0101");
+        resolver.register("attacker-label", "attacker-label", attacker, hex"0101");
 
         vm.stopPrank();
 
@@ -56,7 +56,7 @@ contract ChainResolverAuthTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -78,7 +78,7 @@ contract ChainResolverAuthTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -97,7 +97,7 @@ contract ChainResolverAuthTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -119,7 +119,7 @@ contract ChainResolverAuthTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -141,7 +141,7 @@ contract ChainResolverAuthTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -165,7 +165,7 @@ contract ChainResolverAuthTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
