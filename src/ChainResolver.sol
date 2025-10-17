@@ -87,9 +87,9 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
         } else if (selector == TEXT_SELECTOR) {
             // text(bytes32,string) - decode node + key and return text value
             (bytes32 node, string memory key) = abi.decode(data[4:], (bytes32, string));
-            // Allow reverse chain-name: lookups only when node == namehash(reverse.<namespace>.eth)
-            // where <namespace>.eth is the ENS name encoded by `name`.
-            bool isReverseContext = _isReverseNodeOfName(name, node);
+            // Allow reverse chain-name: lookups only when `name` is `reverse.<namespace>.eth`
+            // and `node == namehash(name)` per ENSIP-10.
+            bool isReverseContext = isReverseNode(name, node);
             string memory value = _getTextWithOverrides(labelhash, key, isReverseContext);
             return abi.encode(value);
         } else if (selector == DATA_SELECTOR) {
@@ -399,17 +399,36 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     }
 
     /**
-     * @notice Validates reverse context by binding `node` to the namespace in `name`.
-     * @param name DNS-encoded `<namespace>.<tld>` provided to `resolve`.
-     * @param node ENS node for `text(node, key)`; must equal `namehash("reverse." + <namespace>.<tld>)`.
-     * @return True if `node` matches the reverse root for the namespace derived from `name`.
+     * @notice Validates node-bound reverse per ENSIP-10 using full name.
+     * @param name DNS-encoded `reverse.<namespace>.eth` provided to `resolve`.
+     * @param node ENS node passed to `text(node, key)`; must equal `namehash(name)`.
+     * @return True if `name` has exactly three labels (reverse.*.eth) and `node` matches.
      */
-    function _isReverseNodeOfName(bytes memory name, bytes32 node) internal pure returns (bool) {
+    function isReverseNode(bytes memory name, bytes32 node) internal pure returns (bool) {
         if (node == bytes32(0)) return false;
-        // Compute directly from `<namespace>.<tld>`;
-        bytes32 base = NameCoder.namehash(name, 0); // namehash('<namespace>.<tld>')
-        bytes32 expected = NameCoder.namehash(base, keccak256("reverse"));
-        return expected == node;
+
+        uint256 offset = 0;
+        bytes32 labelHash;
+        uint8 labelLen;
+
+        // 1st label: reverse
+        (labelHash, offset, labelLen,) = NameCoder.readLabel(name, 0, true);
+        if (labelLen == 0 || labelHash != keccak256("reverse")) return false;
+
+        // 2nd label: <namespace>
+        (, offset, labelLen,) = NameCoder.readLabel(name, offset, true);
+        if (labelLen == 0) return false;
+
+        // 3rd label: eth
+        (labelHash, offset, labelLen,) = NameCoder.readLabel(name, offset, true);
+        if (labelLen == 0 || labelHash != keccak256("eth")) return false;
+
+        // Next must be root; readLabel will revert on junk-at-end
+        (,, labelLen,) = NameCoder.readLabel(name, offset, true);
+        if (labelLen != 0) return false;
+
+        // Bind node to full name
+        return NameCoder.namehash(name, 0) == node;
     }
 
     /**
