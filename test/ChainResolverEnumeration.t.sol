@@ -1,0 +1,96 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.27;
+
+import "forge-std/Test.sol";
+import "../src/ChainResolver.sol";
+import "../src/interfaces/IChainResolver.sol";
+
+contract ChainResolverEnumerationTest is Test {
+    ChainResolver public resolver;
+
+    // Accounts
+    address public admin = address(0x1);
+    address public user1 = address(0x2);
+    address public user2 = address(0x3);
+
+    // Example 7930 chain IDs
+    bytes public constant OP_ID = hex"000000010001010a00"; // Optimism
+    bytes public constant ARB_ID = hex"000000010001016600"; // Arbitrum
+
+    function setUp() public {
+        vm.startPrank(admin);
+        resolver = new ChainResolver(admin);
+        vm.stopPrank();
+    }
+
+    // Identify the file being tested
+    function test1000________________________________________________________________________________() public {}
+    function test1100_____________________________ENUMERATION____________________________________() public {}
+    function test1200________________________________________________________________________________() public {}
+
+    function test_001____enumeration_____________________SingleInsertAndUpdate() public {
+        vm.startPrank(admin);
+        // First insert
+        resolver.register("optimism", "Optimism", user1, OP_ID);
+        assertEq(resolver.chainCount(), 1, "chainCount should be 1 after first insert");
+        // Verify index 0
+        (string memory lbl0, string memory name0) = resolver.getChainAtIndex(0);
+        assertEq(lbl0, "optimism");
+        assertEq(name0, "Optimism");
+        // Update same label with new owner + name + id
+        resolver.register("optimism", "OP Mainnet", user2, OP_ID);
+        assertEq(resolver.chainCount(), 1, "chainCount should not increment on update");
+        (string memory lbl1, string memory name1) = resolver.getChainAtIndex(0);
+        assertEq(lbl1, "optimism");
+        assertEq(name1, "OP Mainnet");
+        vm.stopPrank();
+    }
+
+    function test_002____enumeration_____________________BatchInsert() public {
+        vm.startPrank(admin);
+
+        // Build batch arrays
+        string[] memory labels = new string[](2);
+        string[] memory names = new string[](2);
+        address[] memory owners = new address[](2);
+        bytes[] memory ids = new bytes[](2);
+
+        // Populate arrays
+        labels[0] = "optimism";
+        labels[1] = "arbitrum";
+        names[0] = "Optimism";
+        names[1] = "Arbitrum";
+        owners[0] = user1;
+        owners[1] = user2;
+        ids[0] = OP_ID;
+        ids[1] = ARB_ID;
+
+        // Register in a single batch
+        resolver.batchRegister(labels, names, owners, ids);
+
+        // chainCount reflects unique labels
+        assertEq(resolver.chainCount(), 2, "chainCount should equal number of unique labels");
+
+        // Verify enumeration order matches insertion order
+        (string memory l0, string memory n0) = resolver.getChainAtIndex(0);
+        (string memory l1, string memory n1) = resolver.getChainAtIndex(1);
+        assertEq(l0, "optimism");
+        assertEq(n0, "Optimism");
+        assertEq(l1, "arbitrum");
+        assertEq(n1, "Arbitrum");
+
+        vm.stopPrank();
+    }
+
+    function test_003____enumeration_____________________OutOfBoundsReverts() public {
+        vm.startPrank(admin);
+
+        // Seed with a single entry
+        resolver.register("optimism", "Optimism", user1, OP_ID);
+        vm.stopPrank();
+
+        // Index 1 is out-of-bounds; expect revert
+        vm.expectRevert(IChainResolver.InvalidDataLength.selector);
+        resolver.getChainAtIndex(1);
+    }
+}

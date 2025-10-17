@@ -43,7 +43,7 @@ contract ChainResolverENSReverseTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -75,7 +75,7 @@ contract ChainResolverENSReverseTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -92,7 +92,7 @@ contract ChainResolverENSReverseTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -107,7 +107,7 @@ contract ChainResolverENSReverseTest is Test {
 
     function test_004____resolve_____________________ReverseCidEthReturnsRegisteredChainName() public {
         vm.startPrank(admin);
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
         vm.stopPrank();
 
         // Build calldata for text(bytes32,string) using node-bound reverse context
@@ -124,7 +124,7 @@ contract ChainResolverENSReverseTest is Test {
 
     function test_005____resolve_____________________NonReverseContextReturnsStoredTextRecord() public {
         vm.startPrank(admin);
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
         vm.stopPrank();
 
         // Store a text record for this label and the reverse key

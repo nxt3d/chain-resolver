@@ -21,7 +21,6 @@ interface IChainResolver {
     error NotAuthorized(address _caller, bytes32 _labelhash);
 
     /// @notice Functions
-
     /**
      * @notice Return the canonical chain name for a given ERC-7930 chain identifier.
      * @dev Maps `chainIdBytes (ERC-7930)` → `chainName` set at registration.
@@ -42,7 +41,7 @@ interface IChainResolver {
      * @dev
      * - Emits `LabelOwnerSet` and `RecordSet` on insert/update.
      * - Re-registering an existing label updates owner, chainId, and chainName.
-     * - Enumeration: `chainCount` increments only on first insert; there is no delete path.
+     * - Enumeration: `chainCount` increments only on first insert.
      * @param _label The short chain label (e.g., "optimism").
      * @param _chainName The chain name (e.g., "Optimism").
      * @param _owner The label owner address.

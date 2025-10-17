@@ -34,7 +34,7 @@ contract ChainResolverDataFormatsTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -58,7 +58,7 @@ contract ChainResolverDataFormatsTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -96,7 +96,7 @@ contract ChainResolverDataFormatsTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -140,7 +140,7 @@ contract ChainResolverDataFormatsTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -210,7 +210,7 @@ contract ChainResolverDataFormatsTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -284,7 +284,7 @@ contract ChainResolverDataFormatsTest is Test {
         // Register all test cases
         for (uint256 i = 0; i < testNames.length; i++) {
             bytes32 labelHash = keccak256(bytes(testNames[i]));
-            resolver.register(testNames[i], testOwners[i], testChainIds[i]);
+            resolver.register(testNames[i], testNames[i], testOwners[i], testChainIds[i]);
 
             // Verify registration
             assertEq(
@@ -308,7 +308,7 @@ contract ChainResolverDataFormatsTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 

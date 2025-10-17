@@ -303,8 +303,8 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
 
     /**
      * @notice Internal helper function to register a single chain with label + chain name
-     * @param _label The short chain label (e.g., "chain1")
-     * @param _chainName The chain name (e.g., "Chain One")
+     * @param _label The short chain label (e.g., "optimism")
+     * @param _chainName The chain name (e.g., "Optimism")
      * @param _owner The owner address
      * @param _chainId The chain ID (ERC-7930 bytes)
      */
@@ -333,14 +333,18 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     /**
      * @notice Return the chain label and chain name at a given index.
      * @param _index The index in the chain list
-     * @return _chainLabel The short chain label (e.g., "chain1")
-     * @return _chainName The chain name (e.g., "Chain One")
+     * @return _chainLabel The short chain label (e.g., "optimism")
+     * @return _chainName The chain name (e.g., "Optimism")
      */
-    function getChainAtIndex(uint256 _index) external view returns (string memory _chainLabel, string memory _chainName) {
+    function getChainAtIndex(uint256 _index)
+        external
+        view
+        returns (string memory _chainLabel, string memory _chainName)
+    {
         if (_index >= _chainLabelList.length) revert InvalidDataLength();
-        bytes32 lh = _chainLabelList[_index];
-        _chainLabel = chainLabels[lh];
-        bytes memory cid = chainIds[lh];
+        bytes32 labelhash = _chainLabelList[_index];
+        _chainLabel = chainLabels[labelhash];
+        bytes memory cid = chainIds[labelhash];
         _chainName = chainNames[cid];
     }
 

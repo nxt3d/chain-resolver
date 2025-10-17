@@ -40,8 +40,8 @@ contract ChainResolverRegistryTest is Test {
     function test_001____register____________________SuccessfulChainRegistration() public {
         vm.startPrank(admin);
 
-        // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        // Register a chain (label and chain name)
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         // Verify registration
         assertEq(resolver.owner(), admin, "Admin should be contract owner");
@@ -59,10 +59,10 @@ contract ChainResolverRegistryTest is Test {
         vm.startPrank(admin);
 
         // Register a chain first time
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         // Try to register the same chain again - should succeed (overwrites existing registration)
-        resolver.register(CHAIN_NAME, user2, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user2, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -76,7 +76,7 @@ contract ChainResolverRegistryTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
 
         vm.stopPrank();
 
@@ -105,10 +105,13 @@ contract ChainResolverRegistryTest is Test {
         vm.startPrank(admin);
 
         // Prepare batch data
+        string[] memory labels = new string[](2);
         string[] memory chainNames = new string[](2);
         address[] memory owners = new address[](2);
         bytes[] memory chainIds = new bytes[](2);
 
+        labels[0] = "optimism";
+        labels[1] = "arbitrum";
         chainNames[0] = "optimism";
         chainNames[1] = "arbitrum";
         owners[0] = user1;
@@ -117,7 +120,7 @@ contract ChainResolverRegistryTest is Test {
         chainIds[1] = hex"000000010001016600"; // arbitrum
 
         // Register batch
-        resolver.batchRegister(chainNames, owners, chainIds);
+        resolver.batchRegister(labels, chainNames, owners, chainIds);
 
         // Verify registrations
         assertEq(resolver.getOwner(keccak256(bytes("optimism"))), user1);
@@ -134,10 +137,13 @@ contract ChainResolverRegistryTest is Test {
         vm.startPrank(admin);
 
         // Prepare mismatched arrays
+        string[] memory labels = new string[](2);
         string[] memory chainNames = new string[](2);
         address[] memory owners = new address[](1); // Different length
         bytes[] memory chainIds = new bytes[](2);
 
+        labels[0] = "optimism";
+        labels[1] = "arbitrum";
         chainNames[0] = "optimism";
         chainNames[1] = "arbitrum";
         owners[0] = user1;
@@ -146,7 +152,7 @@ contract ChainResolverRegistryTest is Test {
 
         // Should revert with InvalidDataLength
         vm.expectRevert(IChainResolver.InvalidDataLength.selector);
-        resolver.batchRegister(chainNames, owners, chainIds);
+        resolver.batchRegister(labels, chainNames, owners, chainIds);
 
         vm.stopPrank();
 
@@ -157,10 +163,13 @@ contract ChainResolverRegistryTest is Test {
         vm.startPrank(admin);
 
         // Prepare mismatched arrays
+        string[] memory labels = new string[](2);
         string[] memory chainNames = new string[](2);
         address[] memory owners = new address[](2);
         bytes[] memory chainIds = new bytes[](1); // Different length
 
+        labels[0] = "optimism";
+        labels[1] = "arbitrum";
         chainNames[0] = "optimism";
         chainNames[1] = "arbitrum";
         owners[0] = user1;
@@ -169,7 +178,7 @@ contract ChainResolverRegistryTest is Test {
 
         // Should revert with InvalidDataLength
         vm.expectRevert(IChainResolver.InvalidDataLength.selector);
-        resolver.batchRegister(chainNames, owners, chainIds);
+        resolver.batchRegister(labels, chainNames, owners, chainIds);
 
         vm.stopPrank();
 
@@ -180,12 +189,13 @@ contract ChainResolverRegistryTest is Test {
         vm.startPrank(admin);
 
         // Prepare empty arrays
+        string[] memory labels = new string[](0);
         string[] memory chainNames = new string[](0);
         address[] memory owners = new address[](0);
         bytes[] memory chainIds = new bytes[](0);
 
         // Should not revert with empty arrays
-        resolver.batchRegister(chainNames, owners, chainIds);
+        resolver.batchRegister(labels, chainNames, owners, chainIds);
 
         vm.stopPrank();
 
@@ -196,16 +206,18 @@ contract ChainResolverRegistryTest is Test {
         vm.startPrank(admin);
 
         // Prepare single item batch
+        string[] memory labels = new string[](1);
         string[] memory chainNames = new string[](1);
         address[] memory owners = new address[](1);
         bytes[] memory chainIds = new bytes[](1);
 
+        labels[0] = "optimism";
         chainNames[0] = "optimism";
         owners[0] = user1;
         chainIds[0] = hex"000000010001010a00";
 
         // Register single item
-        resolver.batchRegister(chainNames, owners, chainIds);
+        resolver.batchRegister(labels, chainNames, owners, chainIds);
 
         // Verify registration
         assertEq(resolver.getOwner(keccak256(bytes("optimism"))), user1);
