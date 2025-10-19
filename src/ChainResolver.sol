@@ -235,7 +235,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
         onlyAuthorized(_labelhash)
     {
         dataRecords[_labelhash][_key] = _data;
-        emit DataChanged(_labelhash, _key, _key, _data);
+        emit DataChanged(_labelhash, keccak256(bytes(_key)), keccak256(_data));
     }
 
     /**

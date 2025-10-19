@@ -17,13 +17,13 @@ contract ChainResolverRegistryTest is Test {
     string public constant CHAIN_NAME = "optimism";
     // 7930 format: Version(4) + ChainType(2) + ChainRefLen(1) + ChainRef(1) + AddrLen(1) + Addr(0)
     // Version: 0x00000001, ChainType: 0x0001 (Ethereum), ChainRefLen: 0x01, ChainRef: 0x0a (10), AddrLen: 0x00, Addr: (empty)
-    bytes public constant CHAIN_ID = hex"000000010001010a00";
+    bytes public constant CHAIN_ID = hex"00010001010a00";
     bytes32 public constant LABEL_HASH = keccak256(bytes(CHAIN_NAME));
 
     string public constant CHAIN_NAME_2 = "arbitrum";
     // 7930 format: Version(4) + ChainType(2) + ChainRefLen(1) + ChainRef(1) + AddrLen(1) + Addr(0)
     // Version: 0x00000001, ChainType: 0x0001 (Ethereum), ChainRefLen: 0x01, ChainRef: 0x66 (102), AddrLen: 0x00, Addr: (empty)
-    bytes public constant CHAIN_ID_2 = hex"000000010001016600";
+    bytes public constant CHAIN_ID_2 = hex"00010001016600";
     bytes32 public constant LABEL_HASH_2 = keccak256(bytes(CHAIN_NAME_2));
 
     function setUp() public {

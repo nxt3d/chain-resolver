@@ -17,7 +17,7 @@ contract ChainResolverDataFormatsTest is Test {
 
     // Test data - using 7930 chain ID format
     string public constant CHAIN_NAME = "optimism";
-    bytes public constant CHAIN_ID = hex"000000010001010a00";
+    bytes public constant CHAIN_ID = hex"00010001010a00";
     bytes32 public constant LABEL_HASH = keccak256(bytes(CHAIN_NAME));
 
     function setUp() public {
@@ -272,10 +272,10 @@ contract ChainResolverDataFormatsTest is Test {
 
         bytes[] memory testChainIds = new bytes[](5);
         testChainIds[0] = hex""; // Empty chain ID
-        testChainIds[1] = hex"000000010001010a00"; // Normal chain ID
-        testChainIds[2] = hex"000000010001016600"; // Another normal chain ID
+        testChainIds[1] = hex"00010001010a00"; // Normal chain ID
+        testChainIds[2] = hex"00010001016600"; // Another normal chain ID
         testChainIds[3] = new bytes(1000); // Very long chain ID
-        testChainIds[4] = hex"000000010001010a00"; // Duplicate chain ID
+        testChainIds[4] = hex"00010001010a00"; // Duplicate chain ID
 
         // Fill very long chain ID
         for (uint256 i = 0; i < testChainIds[3].length; i++) {

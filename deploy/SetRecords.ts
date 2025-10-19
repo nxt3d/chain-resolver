@@ -128,7 +128,8 @@ try {
   // Set addr(60)
   if (await promptContinueOrExit(rl, 'Set addr(60)? (y/n): ')) {
     const a60 = (await askQuestion(rl, 'ETH address: ')).trim();
-    const tx = await resolver.setAddr(labelhash, a60);
+    const setAddr60 = resolver.getFunction('setAddr(bytes32,address)');
+    const tx = await setAddr60(labelhash, a60);
     await tx.wait();
     console.log('✓ setAddr(60)');
   }
@@ -139,7 +140,8 @@ try {
     const coinType = BigInt(coinTypeStr);
     const addr = (await askQuestion(rl, 'address (bytes: 0x.. or utf8): ')).trim();
     const val = toBytesLike(addr);
-    const tx = await resolver.setAddr(labelhash, coinType, val);
+    const setAddrCoin = resolver.getFunction('setAddr(bytes32,uint256,bytes)');
+    const tx = await setAddrCoin(labelhash, coinType, val);
     await tx.wait();
     console.log(`✓ setAddr(${coinType})`);
   }

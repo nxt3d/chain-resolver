@@ -10,7 +10,7 @@ This repo contains a single contract — [`ChainResolver.sol`](src/ChainResolver
 
 ## ChainResolver.sol
 
-- The `chainId` bytes follow the 7930 chain identifier format; see [7930 Chain Identifier](#7930-chain-identifier-no-address).
+- The `chainId` bytes follow the 7930 chain identifier format; see [7930 Chain Identifier](#7930-chain-identifier).
 - Forward mapping: `labelhash → chainId (bytes)`
 - Reverse mapping: `chainId (bytes) → label (string)`
 - Per‑label ENS records: `addr(coinType)`, `contenthash`, `text`, and `data`.
@@ -25,7 +25,7 @@ This repo contains a single contract — [`ChainResolver.sol`](src/ChainResolver
 </p>
 
 Forward resolution (label → 7930):
-The ENS field `text(..., "chain-id")` (per [ENSIP‑5](https://docs.ens.domains/ensip/5)) returns the chain’s 7930 ID as a hex string. The field `data(..., "chain-id")` returns the raw 7930 bytes (per ENSIP‑TBD‑19). This value is written at registration by the contract owner (e.g., a multisig) and the resolver ignores any user‑set text under that key. To resolve a chain ID:
+The ENS field `text(..., "chain-id")` (per [ENSIP‑5](https://docs.ens.domains/ensip/5)) returns the chain’s 7930 ID as a hex string. The field `data(..., "chain-id")` returns the raw 7930 bytes (per [ENSIP‑24: Arbitrary Data Resolution](https://raw.githubusercontent.com/unruggable-labs/ensips/3f181f3be82b140ebc30d4d7caa6242520246dd6/ensips/24.md)). This value is written at registration by the contract owner (e.g., a multisig) and the resolver ignores any user‑set text under that key. To resolve a chain ID:
  - DNS‑encode the ENS name (e.g., `optimism.cid.eth`).
  - Compute the node of the ENS name (e.g., using `ethers`: `namehash(name)`)
  - Calls:
@@ -42,7 +42,7 @@ Reverse resolution (7930 → label):
 
 Pass a key prefixed with `"chain-name:"` and suffixed with the 7930 hex using `text(bytes32 node,string key)` (per ENSIP‑5). In reverse context this returns the chain label for that 7930 ID. This follows the `chain-name:` text key parameter standard (per [ENSIP‑TBD‑17](https://github.com/nxt3d/ensips/blob/ensip-ideas/ensips/ensip-TBD-17.md)). For example:
 
-  - Text key parameter (string): `"chain-name:<7930-hex>"`
+  - Text key parameter (string): `"chain-name:<7930-hex>"` (for example, `"chain-name:00010001010a00"`)
   - Call (using `name = dnsEncode("reverse.cid.eth")`, `node = namehash(name)`):
     - `resolve(name, encode(text(node, serviceKey)))`
 
@@ -75,14 +75,14 @@ ENS fields available via `IExtendedResolver.resolve(name,data)`:
 - `addr(bytes32 node,uint256 coinType)` → bytes (raw multi‑coin value) — per [ENSIP‑9](https://docs.ens.domains/ensip/9)
 - `contenthash(bytes32 node)` → bytes — per [ENSIP‑7](https://docs.ens.domains/ensip/7)
 - `text(bytes32 node,string key)` → string — per ENSIP‑5 (with special handling for `"chain-id"`, `"chain-name"` and `"chain-name:"`)
-- `data(bytes32 node,string key)` → bytes — per ENSIP‑TBD‑19 (with special handling for `"chain-id"`)
+- `data(bytes32 node,string key)` → bytes — per ENSIP‑24 (with special handling for `"chain-id"`)
 
 ## 7930 Chain Identifier
 
 We use the chain identifier variant of ERC‑7930. Examples:
 
-- Optimism (chain 10): `0x000000010001010a00`
-- Arbitrum (chain 102): `0x000000010001016600`
+- Optimism (chain 10): `0x00010001010a00`
+- Arbitrum (chain 102): `0x00010001016600`
 
 See [ERC‑7930: Universal Chain Identifier](https://eips.ethereum.org/EIPS/eip-7930) for the full specification.
 
@@ -161,4 +161,4 @@ bun run deploy/ReverseResolveByChainId.ts -- --chain=sepolia
 - [ENSIP‑11](https://docs.ens.domains/ensip/11) — Coin types (SLIP‑44 mapping)
 - [ENSIP‑TBD‑17](https://github.com/nxt3d/ensips/blob/ensip-ideas/ensips/ensip-TBD-17.md) — Service Key Parameters (e.g., `chain-name:`)
 - [ENSIP‑TBD‑18](https://github.com/nxt3d/ensips/blob/ensip-ideas/ensips/ensip-TBD-18.md) — Global `chain-id` text record
-- [ENSIP‑TBD‑19](https://github.com/nxt3d/ensips/blob/ensip-ideas/ensips/ensip-TBD-19.md) — `data()` records for chain IDs
+- [ENSIP‑24](https://raw.githubusercontent.com/unruggable-labs/ensips/3f181f3be82b140ebc30d4d7caa6242520246dd6/ensips/24.md) — Arbitrary Data Resolution (`data()` records)

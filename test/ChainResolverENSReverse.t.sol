@@ -20,15 +20,15 @@ contract ChainResolverENSReverseTest is Test {
     string public constant CHAIN_NAME = "Optimism"; // human-readable name distinct from label
     // 7930 format: Version(4) + ChainType(2) + ChainRefLen(1) + ChainRef(1) + AddrLen(1) + Addr(0)
     // Version: 0x00000001, ChainType: 0x0001 (Ethereum), ChainRefLen: 0x01, ChainRef: 0x0a (10), AddrLen: 0x00, Addr: (empty)
-    bytes public constant CHAIN_ID = hex"000000010001010a00";
+    bytes public constant CHAIN_ID = hex"00010001010a00";
     bytes32 public constant LABEL_HASH = keccak256(bytes(LABEL));
 
     // Precomputed DNS-encoded names
     // cid.eth => 0x03 'cid' 0x03 'eth' 0x00
     bytes internal constant DNS_CID_ETH = hex"036369640365746800";
 
-    // Encoded key for reverse text query: "chain-name:" + <7930 hex w/out 0x>
-    string internal constant KEY_CHAIN_NAME = "chain-name:000000010001010a00";
+    // Encoded key for reverse text query: "chain-name:" + <7930 hex (no 0x prefix)>
+    string internal constant KEY_CHAIN_NAME = "chain-name:00010001010a00";
 
     function setUp() public {
         vm.startPrank(admin);
@@ -100,7 +100,7 @@ contract ChainResolverENSReverseTest is Test {
         vm.stopPrank();
 
         // Test reverse resolution for unknown chain ID
-        bytes memory unknownChainId = hex"000000010001019900"; // 7930 format for chain 153 (unknown)
+        bytes memory unknownChainId = hex"00010001019900"; // 7930 format for chain 153 (unknown)
         string memory resolvedName = resolver.chainName(unknownChainId);
 
         assertEq(resolvedName, "", "Should return empty string for unknown chain ID");

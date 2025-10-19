@@ -16,7 +16,7 @@ contract ChainResolverEdgeCasesTest is Test {
 
     // Test data - using 7930 chain ID format
     string public constant CHAIN_NAME = "optimism";
-    bytes public constant CHAIN_ID = hex"000000010001010a00";
+    bytes public constant CHAIN_ID = hex"00010001010a00";
     bytes32 public constant LABEL_HASH = keccak256(bytes(CHAIN_NAME));
 
     function setUp() public {

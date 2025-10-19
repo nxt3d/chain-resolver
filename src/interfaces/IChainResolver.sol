@@ -21,7 +21,7 @@ interface IChainResolver {
     event OperatorSet(address indexed _owner, address indexed _operator, bool _isOperator);
     event AddrChanged(bytes32 indexed _labelhash, address _owner);
     event AddressChanged(bytes32 indexed node, uint256 coinType, bytes newAddress);
-    event DataChanged(bytes32 node, string indexed indexedKey, string key, bytes data);
+    event DataChanged(bytes32 node, bytes32 indexed keyHash, bytes32 indexed dataHash);
 
     /// @notice Errors
     error InvalidDataLength();

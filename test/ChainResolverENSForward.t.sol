@@ -17,7 +17,7 @@ contract ChainResolverENSForwardTest is Test {
     string public constant CHAIN_NAME = "optimism";
     // 7930 format: Version(4) + ChainType(2) + ChainRefLen(1) + ChainRef(1) + AddrLen(1) + Addr(0)
     // Version: 0x00000001, ChainType: 0x0001 (Ethereum), ChainRefLen: 0x01, ChainRef: 0x0a (10), AddrLen: 0x00, Addr: (empty)
-    bytes public constant CHAIN_ID = hex"000000010001010a00";
+    bytes public constant CHAIN_ID = hex"00010001010a00";
     bytes32 public constant LABEL_HASH = keccak256(bytes(CHAIN_NAME));
 
     function setUp() public {
@@ -89,9 +89,8 @@ contract ChainResolverENSForwardTest is Test {
         vm.startPrank(user1);
 
         bytes memory testData = hex"deadbeef";
-        // Expect DataChanged event (node, indexedKey, key, data)
-        vm.expectEmit(true, true, true, true);
-        emit IChainResolver.DataChanged(LABEL_HASH, "custom", "custom", testData);
+        vm.expectEmit(true, true, false, true);
+        emit IChainResolver.DataChanged(LABEL_HASH, keccak256(bytes("custom")), keccak256(testData));
         resolver.setData(LABEL_HASH, "custom", testData);
 
         // Verify data record
@@ -146,7 +145,7 @@ contract ChainResolverENSForwardTest is Test {
         string memory resolvedChainId = abi.decode(result, (string));
 
         // Should return hex representation of chain ID (without 0x prefix)
-        string memory expectedHex = "000000010001010a00";
+        string memory expectedHex = "00010001010a00";
         assertEq(resolvedChainId, expectedHex, "Override should return canonical chain-id, ignoring stored text");
 
         console.log("Successfully resolved chain-id text record");

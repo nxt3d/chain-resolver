@@ -14,8 +14,8 @@ contract ChainResolverEnumerationTest is Test {
     address public user2 = address(0x3);
 
     // Example 7930 chain IDs
-    bytes public constant OP_ID = hex"000000010001010a00"; // Optimism
-    bytes public constant ARB_ID = hex"000000010001016600"; // Arbitrum
+    bytes public constant OP_ID = hex"00010001010a00"; // Optimism
+    bytes public constant ARB_ID = hex"00010001016600"; // Arbitrum
 
     function setUp() public {
         vm.startPrank(admin);

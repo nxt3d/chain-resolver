@@ -47,7 +47,7 @@ async function main() {
     // Test data
     const label = 'optimism';
     const LABEL_HASH = keccak256(toUtf8Bytes(label));
-    const CHAIN_ID_HEX = '0x000000010001010a00';
+    const CHAIN_ID_HEX = '0x00010001010a00';
     const CHAIN_ID = getBytes(CHAIN_ID_HEX);
     section('Inputs');
     log('label', label);
