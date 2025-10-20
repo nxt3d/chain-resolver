@@ -141,18 +141,10 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     /**
      * @inheritdoc IChainResolver
      */
-    function batchRegister(
-        string[] calldata _labels,
-        string[] calldata _chainNames,
-        address[] calldata _owners,
-        bytes[] calldata _chainIds
-    ) external onlyOwner {
-        uint256 _length = _labels.length;
-        if (_length != _chainNames.length || _length != _owners.length || _length != _chainIds.length) {
-            revert InvalidDataLength();
-        }
+    function batchRegister(ChainData[] calldata items) external onlyOwner {
+        uint256 _length = items.length;
         for (uint256 i = 0; i < _length; i++) {
-            _register(_labels[i], _chainNames[i], _owners[i], _chainIds[i]);
+            _register(items[i].label, items[i].chainName, items[i].owner, items[i].chainId);
         }
     }
 
@@ -308,10 +300,12 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     {
         bytes32 _labelhash = keccak256(bytes(_label));
 
-        chainData[_labelhash].owner = _owner;
-        chainData[_labelhash].chainId = _chainId;
-        chainData[_labelhash].label = _label;
-        chainData[_labelhash].chainName = _chainName;
+        chainData[_labelhash] = IChainResolver.ChainData({
+            label: _label,
+            chainName: _chainName,
+            owner: _owner,
+            chainId: _chainId
+        });
         labelById[_chainId] = _label;
 
         if (!_listed[_labelhash]) {

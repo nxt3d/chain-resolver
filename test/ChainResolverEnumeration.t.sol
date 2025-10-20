@@ -49,24 +49,13 @@ contract ChainResolverEnumerationTest is Test {
     function test_002____enumeration_____________________BatchInsert() public {
         vm.startPrank(admin);
 
-        // Build batch arrays
-        string[] memory labels = new string[](2);
-        string[] memory names = new string[](2);
-        address[] memory owners = new address[](2);
-        bytes[] memory ids = new bytes[](2);
-
-        // Populate arrays
-        labels[0] = "optimism";
-        labels[1] = "arbitrum";
-        names[0] = "Optimism";
-        names[1] = "Arbitrum";
-        owners[0] = user1;
-        owners[1] = user2;
-        ids[0] = OP_ID;
-        ids[1] = ARB_ID;
+        // Build batch structs
+        IChainResolver.ChainData[] memory items = new IChainResolver.ChainData[](2);
+        items[0] = IChainResolver.ChainData({label: "optimism", chainName: "Optimism", owner: user1, chainId: OP_ID});
+        items[1] = IChainResolver.ChainData({label: "arbitrum", chainName: "Arbitrum", owner: user2, chainId: ARB_ID});
 
         // Register in a single batch
-        resolver.batchRegister(labels, names, owners, ids);
+        resolver.batchRegister(items);
 
         // chainCount reflects unique labels
         assertEq(resolver.chainCount(), 2, "chainCount should equal number of unique labels");

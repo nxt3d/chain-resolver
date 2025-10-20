@@ -30,7 +30,11 @@ interface IChainResolver {
     /// @notice Functions
     /**
      * @notice Return the canonical chain label for a given ERC-7930 chain identifier.
-     * @dev Maps `chainIdBytes (ERC-7930)` → `label` set at registration.
+     * @dev
+     * - Despite the function name `chainName(...)`, this returns the canonical label (e.g., "optimism").
+     * - Rationale: the label is the identifier used in our ENS context and is also commonly referred to as
+     *   a "chain name" in interop contexts. We keep the function name for compatibility while returning the label.
+     * - Maps `chainIdBytes (ERC-7930)` → `label` set at registration.
      * @param _chainIdBytes The ERC-7930 chain identifier bytes.
      * @return _chainName The chain label (e.g., "optimism").
      */
@@ -55,18 +59,9 @@ interface IChainResolver {
 
     /**
      * @notice Batch register or update multiple chains (owner-only).
-     * @dev Reverts `InvalidDataLength` if array lengths are not equal. See `register(...)` for semantics.
-     * @param _labels Array of short chain labels.
-     * @param _chainNames Array of chain names.
-     * @param _owners Array of owners for each label.
-     * @param _chainIds Array of ERC-7930 chain identifiers.
+     * @param items Array of ChainData structs.
      */
-    function batchRegister(
-        string[] calldata _labels,
-        string[] calldata _chainNames,
-        address[] calldata _owners,
-        bytes[] calldata _chainIds
-    ) external;
+    function batchRegister(ChainData[] calldata items) external;
 
     /**
      * @notice Set or transfer the owner of a label. Callable by current owner or an approved operator.

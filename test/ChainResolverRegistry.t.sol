@@ -105,97 +105,41 @@ contract ChainResolverRegistryTest is Test {
         vm.startPrank(admin);
 
         // Prepare batch data
-        string[] memory labels = new string[](2);
-        string[] memory chainNames = new string[](2);
-        address[] memory owners = new address[](2);
-        bytes[] memory chainIds = new bytes[](2);
-
-        labels[0] = "optimism";
-        labels[1] = "arbitrum";
-        chainNames[0] = "optimism";
-        chainNames[1] = "arbitrum";
-        owners[0] = user1;
-        owners[1] = user2;
-        chainIds[0] = hex"000000010001010a00"; // optimism
-        chainIds[1] = hex"000000010001016600"; // arbitrum
+        IChainResolver.ChainData[] memory items = new IChainResolver.ChainData[](2);
+        items[0] = IChainResolver.ChainData({
+            label: "optimism",
+            chainName: "optimism",
+            owner: user1,
+            chainId: hex"000000010001010a00"
+        });
+        items[1] = IChainResolver.ChainData({
+            label: "arbitrum",
+            chainName: "arbitrum",
+            owner: user2,
+            chainId: hex"000000010001016600"
+        });
 
         // Register batch
-        resolver.batchRegister(labels, chainNames, owners, chainIds);
+        resolver.batchRegister(items);
 
         // Verify registrations
         assertEq(resolver.getOwner(keccak256(bytes("optimism"))), user1);
         assertEq(resolver.getOwner(keccak256(bytes("arbitrum"))), user2);
-        assertEq(resolver.chainId(keccak256(bytes("optimism"))), chainIds[0]);
-        assertEq(resolver.chainId(keccak256(bytes("arbitrum"))), chainIds[1]);
+        assertEq(resolver.chainId(keccak256(bytes("optimism"))), items[0].chainId);
+        assertEq(resolver.chainId(keccak256(bytes("arbitrum"))), items[1].chainId);
 
         vm.stopPrank();
 
         console.log("Successfully registered batch of chains");
     }
 
-    function test_005____batchRegister_______________RevertsOnMismatchedArrayLengths() public {
-        vm.startPrank(admin);
-
-        // Prepare mismatched arrays
-        string[] memory labels = new string[](2);
-        string[] memory chainNames = new string[](2);
-        address[] memory owners = new address[](1); // Different length
-        bytes[] memory chainIds = new bytes[](2);
-
-        labels[0] = "optimism";
-        labels[1] = "arbitrum";
-        chainNames[0] = "optimism";
-        chainNames[1] = "arbitrum";
-        owners[0] = user1;
-        chainIds[0] = hex"000000010001010a00";
-        chainIds[1] = hex"000000010001016600";
-
-        // Should revert with InvalidDataLength
-        vm.expectRevert(IChainResolver.InvalidDataLength.selector);
-        resolver.batchRegister(labels, chainNames, owners, chainIds);
-
-        vm.stopPrank();
-
-        console.log("Successfully reverted on mismatched array lengths");
-    }
-
-    function test_006____batchRegister_______________RevertsOnMismatchedChainIdsLength() public {
-        vm.startPrank(admin);
-
-        // Prepare mismatched arrays
-        string[] memory labels = new string[](2);
-        string[] memory chainNames = new string[](2);
-        address[] memory owners = new address[](2);
-        bytes[] memory chainIds = new bytes[](1); // Different length
-
-        labels[0] = "optimism";
-        labels[1] = "arbitrum";
-        chainNames[0] = "optimism";
-        chainNames[1] = "arbitrum";
-        owners[0] = user1;
-        owners[1] = user2;
-        chainIds[0] = hex"000000010001010a00";
-
-        // Should revert with InvalidDataLength
-        vm.expectRevert(IChainResolver.InvalidDataLength.selector);
-        resolver.batchRegister(labels, chainNames, owners, chainIds);
-
-        vm.stopPrank();
-
-        console.log("Successfully reverted on mismatched chainIds length");
-    }
-
     function test_007____batchRegister_______________EmptyArrays() public {
         vm.startPrank(admin);
 
-        // Prepare empty arrays
-        string[] memory labels = new string[](0);
-        string[] memory chainNames = new string[](0);
-        address[] memory owners = new address[](0);
-        bytes[] memory chainIds = new bytes[](0);
-
+        // Prepare empty items
+        IChainResolver.ChainData[] memory items0 = new IChainResolver.ChainData[](0);
         // Should not revert with empty arrays
-        resolver.batchRegister(labels, chainNames, owners, chainIds);
+        resolver.batchRegister(items0);
 
         vm.stopPrank();
 
@@ -206,22 +150,20 @@ contract ChainResolverRegistryTest is Test {
         vm.startPrank(admin);
 
         // Prepare single item batch
-        string[] memory labels = new string[](1);
-        string[] memory chainNames = new string[](1);
-        address[] memory owners = new address[](1);
-        bytes[] memory chainIds = new bytes[](1);
-
-        labels[0] = "optimism";
-        chainNames[0] = "optimism";
-        owners[0] = user1;
-        chainIds[0] = hex"000000010001010a00";
+        IChainResolver.ChainData[] memory one = new IChainResolver.ChainData[](1);
+        one[0] = IChainResolver.ChainData({
+            label: "optimism",
+            chainName: "optimism",
+            owner: user1,
+            chainId: hex"000000010001010a00"
+        });
 
         // Register single item
-        resolver.batchRegister(labels, chainNames, owners, chainIds);
+        resolver.batchRegister(one);
 
         // Verify registration
         assertEq(resolver.getOwner(keccak256(bytes("optimism"))), user1);
-        assertEq(resolver.chainId(keccak256(bytes("optimism"))), chainIds[0]);
+        assertEq(resolver.chainId(keccak256(bytes("optimism"))), one[0].chainId);
 
         vm.stopPrank();
 
