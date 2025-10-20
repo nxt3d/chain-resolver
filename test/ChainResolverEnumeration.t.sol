@@ -31,14 +31,14 @@ contract ChainResolverEnumerationTest is Test {
     function test_001____enumeration_____________________SingleInsertAndUpdate() public {
         vm.startPrank(admin);
         // First insert
-        resolver.register("optimism", "Optimism", user1, OP_ID);
+        resolver.register(IChainResolver.ChainData({label: "optimism", chainName: "Optimism", owner: user1, chainId: OP_ID}));
         assertEq(resolver.chainCount(), 1, "chainCount should be 1 after first insert");
         // Verify index 0
         (string memory lbl0, string memory name0) = resolver.getChainAtIndex(0);
         assertEq(lbl0, "optimism");
         assertEq(name0, "Optimism");
         // Update same label with new owner + name + id
-        resolver.register("optimism", "OP Mainnet", user2, OP_ID);
+        resolver.register(IChainResolver.ChainData({label: "optimism", chainName: "OP Mainnet", owner: user2, chainId: OP_ID}));
         assertEq(resolver.chainCount(), 1, "chainCount should not increment on update");
         (string memory lbl1, string memory name1) = resolver.getChainAtIndex(0);
         assertEq(lbl1, "optimism");
@@ -86,7 +86,7 @@ contract ChainResolverEnumerationTest is Test {
         vm.startPrank(admin);
 
         // Seed with a single entry
-        resolver.register("optimism", "Optimism", user1, OP_ID);
+        resolver.register(IChainResolver.ChainData({label: "optimism", chainName: "Optimism", owner: user1, chainId: OP_ID}));
         vm.stopPrank();
 
         // Index 1 is out-of-bounds; expect revert

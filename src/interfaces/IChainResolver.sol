@@ -10,10 +10,10 @@ pragma solidity 0.8.30;
 interface IChainResolver {
     /// @notice Per-labelhash chain data
     struct ChainData {
-        bytes chainId; // ERC-7930 identifier bytes
         string label; // canonical lowercase label
-        string name; // human-readable chain name
+        string chainName; // human-readable chain name
         address owner; // label owner
+        bytes chainId; // ERC-7930 identifier bytes
     }
     /// @notice Events
     event RecordSet(bytes32 indexed _labelhash, bytes _chainId, string _chainName);
@@ -49,13 +49,9 @@ interface IChainResolver {
      * - Emits `LabelOwnerSet` and `RecordSet` on insert/update.
      * - Re-registering an existing label updates owner, chainId, and chainName.
      * - Enumeration: `chainCount` increments only on first insert.
-     * @param _label The short chain label (e.g., "optimism").
-     * @param _chainName The chain name (e.g., "Optimism").
-     * @param _owner The label owner address.
-     * @param _chainId The ERC-7930 chain identifier bytes.
+     * @param data The ChainData struct
      */
-    function register(string calldata _label, string calldata _chainName, address _owner, bytes calldata _chainId)
-        external;
+    function register(ChainData calldata data) external;
 
     /**
      * @notice Batch register or update multiple chains (owner-only).

@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
 import "../src/ChainResolver.sol";
+import "../src/interfaces/IChainResolver.sol";
 import {NameCoder} from "@ensdomains/ens-contracts/contracts/utils/NameCoder.sol";
 import {HexUtils} from "@ensdomains/ens-contracts/contracts/utils/HexUtils.sol";
 
@@ -44,7 +45,7 @@ contract ChainResolverENSReverseTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(LABEL, CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(IChainResolver.ChainData({label: LABEL, chainName: CHAIN_NAME, owner: user1, chainId: CHAIN_ID}));
 
         vm.stopPrank();
 
@@ -77,7 +78,7 @@ contract ChainResolverENSReverseTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(LABEL, CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(IChainResolver.ChainData({label: LABEL, chainName: CHAIN_NAME, owner: user1, chainId: CHAIN_ID}));
 
         vm.stopPrank();
 
@@ -94,7 +95,7 @@ contract ChainResolverENSReverseTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(LABEL, CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(IChainResolver.ChainData({label: LABEL, chainName: CHAIN_NAME, owner: user1, chainId: CHAIN_ID}));
 
         vm.stopPrank();
 
@@ -109,7 +110,7 @@ contract ChainResolverENSReverseTest is Test {
 
     function test_004____resolve_____________________ReverseCidEthReturnsRegisteredChainName() public {
         vm.startPrank(admin);
-        resolver.register(LABEL, CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(IChainResolver.ChainData({label: LABEL, chainName: CHAIN_NAME, owner: user1, chainId: CHAIN_ID}));
         vm.stopPrank();
 
         // Build calldata for text(bytes32,string) using node-bound reverse context
@@ -128,7 +129,7 @@ contract ChainResolverENSReverseTest is Test {
 
     function test_005____resolve_____________________NonReverseContextReturnsStoredTextRecord() public {
         vm.startPrank(admin);
-        resolver.register(LABEL, CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(IChainResolver.ChainData({label: LABEL, chainName: CHAIN_NAME, owner: user1, chainId: CHAIN_ID}));
         vm.stopPrank();
 
         // Store a text record for this label and the reverse key

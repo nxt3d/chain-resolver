@@ -52,11 +52,19 @@ Pass a key prefixed with `"chain-name:"` and suffixed with the 7930 hex using `t
 Core reads and admin (see [src/interfaces/IChainResolver.sol](src/interfaces/IChainResolver.sol)):
 
 ```solidity
+// Struct used for registration
+struct ChainData {
+  string label;
+  string chainName;
+  address owner;
+  bytes chainId;
+}
+
 // Forward: labelhash -> 7930 bytes
 function chainId(bytes32 labelhash) external view returns (bytes memory);
 // Reverse: 7930 bytes -> label
 function chainName(bytes calldata chainIdBytes) external view returns (string memory);
-function register(string calldata label, string calldata chainName, address owner, bytes calldata chainId) external; // owner-only
+function register(ChainData calldata data) external; // owner-only
 function batchRegister(string[] calldata labels, string[] calldata chainNames, address[] calldata owners, bytes[] calldata chainIds) external; // owner-only
 function setLabelOwner(bytes32 labelhash, address owner) external; // label owner or operator
 function setOperator(address operator, bool isOperator) external;   // per-owner operator

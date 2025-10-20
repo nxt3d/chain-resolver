@@ -44,7 +44,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     string public constant CHAIN_NAME_PREFIX = "chain-name:";
 
     // Chain data storage
-    mapping(bytes32 _labelhash => IChainResolver.ChainData data) internal chainData;
+    mapping(bytes32 _labelhash => ChainData data) internal chainData;
     mapping(bytes _chainId => string _label) internal labelById;
     mapping(address _owner => mapping(address _operator => bool _isOperator)) internal operators;
 
@@ -134,11 +134,8 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     /**
      * @inheritdoc IChainResolver
      */
-    function register(string calldata _label, string calldata _chainName, address _owner, bytes calldata _chainId)
-        external
-        onlyOwner
-    {
-        _register(_label, _chainName, _owner, _chainId);
+    function register(ChainData calldata data) external onlyOwner {
+        _register(data.label, data.chainName, data.owner, data.chainId);
     }
 
     /**
@@ -314,7 +311,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
         chainData[_labelhash].owner = _owner;
         chainData[_labelhash].chainId = _chainId;
         chainData[_labelhash].label = _label;
-        chainData[_labelhash].name = _chainName;
+        chainData[_labelhash].chainName = _chainName;
         labelById[_chainId] = _label;
 
         if (!_listed[_labelhash]) {
@@ -343,7 +340,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
         if (_index >= _chainLabelList.length) revert InvalidDataLength();
         bytes32 labelhash = _chainLabelList[_index];
         _label = chainData[labelhash].label;
-        _chainName = chainData[labelhash].name;
+        _chainName = chainData[labelhash].chainName;
     }
 
     /**
@@ -398,7 +395,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
 
         // Forward chain name: "chain-name" returns the canonical chain name for this label
         if (keccak256(abi.encodePacked(_key)) == keccak256(abi.encodePacked(CHAIN_NAME_KEY))) {
-            return chainData[_labelhash].name;
+            return chainData[_labelhash].chainName;
         }
 
         // Check if key starts with "chain-name:" prefix (reverse resolution)

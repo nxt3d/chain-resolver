@@ -39,7 +39,7 @@ async function main() {
         'function resolve(bytes,bytes) view returns (bytes)',
         'function setAddr(bytes32,address) external',
         'function setAddr(bytes32,uint256,bytes) external',
-        'function register(string,string,address,bytes) external',
+        'function register((string,string,address,bytes)) external',
       ],
       wallet
     );
@@ -55,7 +55,7 @@ async function main() {
     log('chainId (hex)', CHAIN_ID_HEX);
     // 2) Register name -> chainId (owner-only)
   section('Register');
-  const tx = await resolver.register(label, label, owner, CHAIN_ID);
+  const tx = await resolver.register([label, label, owner, CHAIN_ID]);
   await tx.wait();
 
     // Prepare names and interfaces

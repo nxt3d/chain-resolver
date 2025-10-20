@@ -41,7 +41,7 @@ contract ChainResolverRegistryTest is Test {
         vm.startPrank(admin);
 
         // Register a chain (label and chain name)
-        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(IChainResolver.ChainData({label: CHAIN_NAME, chainName: CHAIN_NAME, owner: user1, chainId: CHAIN_ID}));
 
         // Verify registration
         assertEq(resolver.owner(), admin, "Admin should be contract owner");
@@ -59,10 +59,10 @@ contract ChainResolverRegistryTest is Test {
         vm.startPrank(admin);
 
         // Register a chain first time
-        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(IChainResolver.ChainData({label: CHAIN_NAME, chainName: CHAIN_NAME, owner: user1, chainId: CHAIN_ID}));
 
         // Try to register the same chain again - should succeed (overwrites existing registration)
-        resolver.register(CHAIN_NAME, CHAIN_NAME, user2, CHAIN_ID);
+        resolver.register(IChainResolver.ChainData({label: CHAIN_NAME, chainName: CHAIN_NAME, owner: user2, chainId: CHAIN_ID}));
 
         vm.stopPrank();
 
@@ -76,7 +76,7 @@ contract ChainResolverRegistryTest is Test {
         vm.startPrank(admin);
 
         // Register a chain
-        resolver.register(CHAIN_NAME, CHAIN_NAME, user1, CHAIN_ID);
+        resolver.register(IChainResolver.ChainData({label: CHAIN_NAME, chainName: CHAIN_NAME, owner: user1, chainId: CHAIN_ID}));
 
         vm.stopPrank();
 
