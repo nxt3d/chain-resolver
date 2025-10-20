@@ -45,8 +45,8 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
 
     // Chain data storage
     mapping(bytes32 _labelhash => bytes _chainId) internal idByLabelhash;
-    mapping(bytes32 _labelhash => string _label) internal labelByHash;
-    mapping(bytes32 _labelhash => string _chainName) internal nameByHash;
+    mapping(bytes32 _labelhash => string _label) internal labelByLabelhash;
+    mapping(bytes32 _labelhash => string _chainName) internal chainNameByLabelhash;
     mapping(bytes32 _labelhash => address _owner) internal labelOwners;
     mapping(bytes _chainId => string _label) internal labelById;
     mapping(address _owner => mapping(address _operator => bool _isOperator)) internal operators;
@@ -316,8 +316,8 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
 
         labelOwners[_labelhash] = _owner;
         idByLabelhash[_labelhash] = _chainId;
-        labelByHash[_labelhash] = _label;
-        nameByHash[_labelhash] = _chainName;
+        labelByLabelhash[_labelhash] = _label;
+        chainNameByLabelhash[_labelhash] = _chainName;
         labelById[_chainId] = _label;
 
         if (!_listed[_labelhash]) {
@@ -335,18 +335,18 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
     /**
      * @notice Return the chain label and chain name at a given index.
      * @param _index The index in the chain list
-     * @return _chainLabel The short chain label (e.g., "optimism")
+     * @return _label The short chain label (e.g., "optimism")
      * @return _chainName The chain name (e.g., "Optimism")
      */
     function getChainAtIndex(uint256 _index)
         external
         view
-        returns (string memory _chainLabel, string memory _chainName)
+        returns (string memory _label, string memory _chainName)
     {
         if (_index >= _chainLabelList.length) revert InvalidDataLength();
         bytes32 labelhash = _chainLabelList[_index];
-        _chainLabel = labelByHash[labelhash];
-        _chainName = nameByHash[labelhash];
+        _label = labelByLabelhash[labelhash];
+        _chainName = chainNameByLabelhash[labelhash];
     }
 
     /**
@@ -401,12 +401,12 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
 
         // Forward chain name: "chain-name" returns the canonical chain name for this label
         if (keccak256(abi.encodePacked(_key)) == keccak256(abi.encodePacked(CHAIN_NAME_KEY))) {
-            return nameByHash[_labelhash];
+            return chainNameByLabelhash[_labelhash];
         }
 
         // Check if key starts with "chain-name:" prefix (reverse resolution)
-        // This enables reverse lookup: given a ERC-7930 chain ID, find the chain name
-        // Format: "chain-name:0x<ERC-7930-hex-string>" where <ERC-7930-hex-string> is the chain ID in hex
+        // This enables reverse lookup: given an ERC-7930 chain ID, find the chain label
+        // Format: "chain-name:<ERC-7930-hex-string>" (no 0x prefix)
         bytes memory keyBytes = bytes(_key);
         bytes memory keyPrefixBytes = bytes(CHAIN_NAME_PREFIX);
         if (_startsWith(keyBytes, keyPrefixBytes)) {
@@ -415,7 +415,7 @@ contract ChainResolver is Ownable, IERC165, IExtendedResolver, IChainResolver {
                 return textRecords[_labelhash][_key];
             }
             // Extract the chain ID hex string from after the "chain-name:" prefix
-            // Example: "chain-name:0x000000010001010a00" -> "0x000000010001010a00"
+            // Example: "chain-name:000000010001010a00" -> "000000010001010a00"
             string memory chainIdPart = _substring(_key, keyPrefixBytes.length, keyBytes.length);
             // Convert hex string to bytes for lookup in labelById mapping
             (bytes memory chainIdBytes,) = HexUtils.hexToBytes(bytes(chainIdPart), 0, bytes(chainIdPart).length);
